@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QuietClass</title>
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/layout.css" />
+</head>
+<body>
+
+<main id="app">
+
+  <!-- Pre-session screen: light "product shell" layer -->
+  <section id="screen-setup" class="screen shell screen-setup" data-active="true">
+    <div class="setup-card">
+      <header class="brand-header">
+        <p class="brand-name">QuietClass</p>
+        <p class="brand-tagline">Make quiet time feel like a mission.</p>
+      </header>
+
+      <h2 class="setup-section-label">Choose a Mission</h2>
+      <div id="theme-picker" class="theme-cards" role="listbox" aria-label="Theme selection"></div>
+
+      <h2 class="setup-section-label">Mission Time</h2>
+      <div id="duration-picker" class="duration-picker" role="listbox" aria-label="Mission duration">
+        <button type="button" class="duration-option" data-duration="120">
+          <span class="duration-value">2</span><span class="duration-unit">MIN</span>
+        </button>
+        <button type="button" class="duration-option" data-duration="180">
+          <span class="duration-value">3</span><span class="duration-unit">MIN</span>
+        </button>
+        <button type="button" class="duration-option" data-duration="300" aria-selected="true">
+          <span class="duration-value">5</span><span class="duration-unit">MIN</span>
+        </button>
+        <button type="button" class="duration-option" data-duration="480">
+          <span class="duration-value">8</span><span class="duration-unit">MIN</span>
+        </button>
+        <button type="button" class="duration-option" data-duration="600">
+          <span class="duration-value">10</span><span class="duration-unit">MIN</span>
+        </button>
+        <button type="button" id="custom-duration-btn" class="duration-option duration-option-custom">
+          <span class="duration-custom-label">Custom</span>
+        </button>
+      </div>
+
+      <div id="custom-duration-control" class="custom-duration-control" hidden>
+        <button type="button" id="custom-minus" class="stepper-btn" aria-label="Decrease 30 seconds">&minus;</button>
+        <span id="custom-duration-value" class="custom-duration-value">02:30</span>
+        <button type="button" id="custom-plus" class="stepper-btn" aria-label="Increase 30 seconds">+</button>
+      </div>
+
+      <h2 class="setup-section-label">Room Setup</h2>
+      <div class="room-setup">
+        <div id="calibration-panel" class="calibration-panel">
+          <div id="calibration-idle" class="calibration-state">
+            <p class="calibration-title">Room Calibration</p>
+            <p class="calibration-status-text">Optional — adapts QuietClass to this room's background noise.</p>
+            <button type="button" id="calibrate-btn" class="btn btn-secondary">Calibrate Room</button>
+          </div>
+          <div id="calibration-running" class="calibration-state" hidden>
+            <p class="calibration-status-text">Calibrating your room&hellip;</p>
+            <p class="calibration-hint">Ask your class to use their normal independent-work voice level.</p>
+            <div id="calibration-countdown" class="calibration-countdown">5</div>
+          </div>
+          <div id="calibration-done" class="calibration-state" hidden>
+            <p class="calibration-status-text calibration-ready">Room Ready ✓</p>
+            <button type="button" id="recalibrate-btn" class="btn btn-ghost-light">Recalibrate</button>
+          </div>
+          <div id="calibration-failed" class="calibration-state" hidden>
+            <p class="calibration-status-text">Couldn't access the microphone.</p>
+            <button type="button" id="calibration-retry-btn" class="btn btn-secondary">Try Again</button>
+          </div>
+        </div>
+
+        <div class="sensitivity-panel">
+          <div class="sensitivity-header">
+            <label for="sensitivity-slider" class="sensitivity-label">Sensitivity</label>
+            <span id="sensitivity-value" class="sensitivity-value">65%</span>
+          </div>
+          <input type="range" id="sensitivity-slider" min="0" max="100" step="5" value="65" aria-label="Sensitivity percentage" />
+          <div class="sensitivity-row">
+            <span class="sensitivity-endpoint">Less Reactive</span>
+            <span class="sensitivity-endpoint">More Reactive</span>
+          </div>
+          <p class="sensitivity-hint">Higher sensitivity makes QuietClass react to smaller increases in classroom noise.</p>
+        </div>
+      </div>
+
+      <button type="button" id="start-btn" class="btn btn-primary btn-large">Start Mission</button>
+    </div>
+  </section>
+
+  <!-- Microphone permission denied screen -->
+  <section id="screen-denied" class="screen shell" data-active="false">
+    <h2>Microphone Access Needed</h2>
+    <p>
+      QuietClass listens to classroom volume to drive the visuals.
+      No audio is recorded or stored — it's processed live and discarded.
+      Please allow microphone access to continue.
+    </p>
+    <button id="retry-btn" class="btn btn-primary" type="button">Try Again</button>
+    <p class="hint">If nothing happens, check your browser's site permissions and allow the microphone for this page.</p>
+  </section>
+
+  <!-- Active mission screen: dark "mission world" layer -->
+  <section id="screen-session" class="screen screen-session" data-active="false">
+    <div id="stage" class="stage" aria-live="off"></div>
+
+    <div class="hud-top">
+      <div class="hud-objective">
+        <p id="hud-mission-title" class="hud-mission-title">Keep the Dragon Asleep</p>
+        <p id="hud-mission-hint" class="hud-mission-hint">Stay quiet until the timer reaches zero.</p>
+      </div>
+      <div class="hud-top-right">
+        <div id="countdown" class="hud-countdown">05:00</div>
+        <div id="session-overlay" class="session-controls">
+          <button id="pause-btn" class="control-btn" type="button">Pause</button>
+          <button id="end-btn" class="control-btn" type="button">End</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-bottom">
+      <div class="meter-header">
+        <span id="meter-label" class="meter-label">Wake Meter</span>
+        <span id="meter-status" class="meter-status" data-level="safe">Safe</span>
+        <span id="meter-percent" class="meter-percent">0%</span>
+      </div>
+      <div class="wake-meter-track">
+        <div id="wake-meter-fill" class="wake-meter-fill"></div>
+      </div>
+      <div class="meter-scale">
+        <span>Safe</span><span>Warning</span><span>Launch</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Mission result screen: light "product shell" layer -->
+  <section id="screen-result" class="screen shell screen-result" data-active="false" data-result="">
+    <div id="result-fx" class="result-fx" aria-hidden="true">
+      <span class="smoke-puff smoke-puff-1"></span>
+      <span class="smoke-puff smoke-puff-2"></span>
+      <span class="smoke-puff smoke-puff-3"></span>
+    </div>
+    <div id="result-card" class="result-card">
+      <h1 id="result-title" class="app-title result-title"></h1>
+      <p id="result-subtitle" class="app-subtitle result-subtitle"></p>
+      <p id="result-line" class="hint result-line"></p>
+      <button id="result-btn" class="btn btn-primary btn-large" type="button"></button>
+    </div>
+  </section>
+
+</main>
+
+<script type="module" src="js/core/app.js"></script>
+</body>
+</html>
