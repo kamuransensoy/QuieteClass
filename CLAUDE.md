@@ -151,3 +151,23 @@ For bug fixes, investigate only the code path directly related to the reported b
 Only perform browser automation or exhaustive verification when I explicitly say:
 
 "Run full automated browser QA."
+
+## Token / Work Discipline
+
+Default to implementation, not investigation.
+
+For routine code edits:
+- Do not invoke design skills unless explicitly requested.
+- Do not audit before editing.
+- Do not read PRODUCT.md unless product direction is changing.
+- Read only files explicitly named by the user.
+- Do not search the whole project.
+- Do not inspect git history.
+- Do not browser-test unless requested.
+- Do not create tests unless requested.
+- Do not explain your plan before editing.
+- Do not perform unrelated cleanup or refactors.
+- Prefer the smallest possible patch.
+- Stop when the requested change is complete.
+- Final summaries: maximum 3 bullets.
+- If more files are genuinely required, ask before expanding scope.

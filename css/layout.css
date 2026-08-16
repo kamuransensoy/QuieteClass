@@ -47,7 +47,7 @@
 }
 
 .brand-header {
-  margin-bottom: var(--space-2);
+  margin-bottom: var(--space-3);
 }
 
 .brand-name {
@@ -73,11 +73,24 @@
   margin: var(--space-3) 0 var(--space-2) 0;
 }
 
+/* Mission selection is the hero decision on this screen — it gets a
+   heavier, non-muted heading instead of the small uppercase label used
+   for the secondary Duration/Room Setup sections below it. */
+.setup-section-label-hero {
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  color: var(--color-text);
+  margin-top: 0;
+}
+
 /* ---------- Theme cards ---------- */
 
 .theme-cards {
   display: flex;
-  gap: var(--space-2);
+  gap: var(--space-3);
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
@@ -93,14 +106,13 @@
   background: var(--color-surface);
   border: 2px solid rgba(35, 40, 58, 0.08);
   border-radius: var(--radius-xl);
-  padding: var(--space-3) var(--space-2);
-  width: 220px;
+  width: 260px;
   color: var(--color-text);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  align-items: stretch;
   position: relative;
+  overflow: hidden;
   box-shadow: var(--shadow-card);
   transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
@@ -112,7 +124,6 @@
 
 .theme-option[aria-selected="true"] {
   border-color: var(--card-accent);
-  background: linear-gradient(165deg, color-mix(in srgb, var(--card-accent) 16%, var(--color-surface)) 0%, var(--color-surface) 65%);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-accent) 55%, transparent), 0 18px 36px -14px color-mix(in srgb, var(--card-accent) 55%, transparent);
   transform: translateY(-4px) scale(1.03);
 }
@@ -121,36 +132,59 @@
   color: var(--card-accent);
 }
 
+/* The mission preview poster fills the full card width — the visual hero
+   of each card — with the name/objective as a light caption strip below
+   it, rather than a small centered icon on an otherwise-empty card. */
+.theme-option .thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.theme-option .thumb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.2s ease;
+}
+
+.theme-option[aria-selected="true"] .thumb svg {
+  transform: scale(1.05);
+}
+
 .theme-option[aria-selected="true"]::after {
   content: "Selected ✓";
-  font-size: 0.7rem;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 0.68rem;
   font-weight: 800;
   color: #fff;
   background: var(--card-accent);
   padding: 3px 10px;
   border-radius: 999px;
   letter-spacing: 0.04em;
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.35);
 }
 
-.theme-option .thumb {
-  width: 84px;
-  height: 84px;
-  filter: drop-shadow(0 6px 10px rgba(35, 40, 58, 0.12));
-  transition: transform 0.15s ease;
-}
-
-.theme-option[aria-selected="true"] .thumb {
-  transform: scale(1.08);
+.theme-option .theme-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 14px var(--space-2) var(--space-2);
 }
 
 .theme-option .theme-name {
   font-family: var(--font-display);
-  font-size: 1.2rem;
+  font-size: 1.3rem;
   font-weight: 800;
 }
 
 .theme-option .theme-objective {
-  font-size: 0.82rem;
+  font-size: 0.85rem;
   color: var(--color-text-muted);
   min-height: 2.2em;
 }
@@ -204,10 +238,10 @@
 }
 
 .duration-option[aria-selected="true"] {
-  background: var(--color-accent);
-  border-color: var(--color-accent);
+  background: var(--mission-accent, var(--color-accent));
+  border-color: var(--mission-accent, var(--color-accent));
   color: #fff;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 40%, transparent), 0 12px 28px -10px rgba(76, 111, 255, 0.5);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 40%, transparent), 0 12px 28px -10px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 50%, transparent);
   transform: translateY(-2px) scale(1.05);
 }
 
@@ -252,10 +286,71 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ---------- Room setup: calibration + sensitivity ---------- */
+/* ---------- Room setup: calibration + sensitivity (collapsible, secondary) ---------- */
+
+.room-setup-details {
+  width: 100%;
+  max-width: 560px;
+}
+
+.room-setup-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  list-style: none;
+  cursor: pointer;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-tint, var(--color-surface));
+  border: 1px solid rgba(35, 40, 58, 0.08);
+}
+
+.room-setup-summary::-webkit-details-marker {
+  display: none;
+}
+
+.room-setup-summary-chevron {
+  width: 7px;
+  height: 7px;
+  border-right: 2px solid var(--color-text-muted);
+  border-bottom: 2px solid var(--color-text-muted);
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+}
+
+.room-setup-details[open] .room-setup-summary-chevron {
+  transform: rotate(-135deg);
+}
+
+.room-setup-summary-text {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 1;
+}
+
+.room-setup-summary-label {
+  color: var(--color-text);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.room-setup-summary-status {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.room-setup-summary-status[data-ready="true"] {
+  color: var(--color-safe);
+}
 
 .room-setup {
   width: 100%;
+  margin-top: 10px;
   display: flex;
   gap: var(--space-2);
   flex-wrap: wrap;
@@ -327,7 +422,7 @@
   width: 100%;
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
+  background: linear-gradient(90deg, var(--color-secondary), var(--mission-accent, var(--color-accent)));
   outline: none;
   margin: var(--space-2) 0 6px 0;
   cursor: pointer;
@@ -341,15 +436,15 @@
   height: 26px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--color-accent);
-  box-shadow: 0 4px 10px rgba(76, 111, 255, 0.35);
+  border: 3px solid var(--mission-accent, var(--color-accent));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 35%, transparent);
   cursor: pointer;
 }
 
 #sensitivity-slider::-moz-range-track {
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--color-secondary), var(--color-accent));
+  background: linear-gradient(90deg, var(--color-secondary), var(--mission-accent, var(--color-accent)));
 }
 
 #sensitivity-slider::-moz-range-thumb {
@@ -357,8 +452,8 @@
   height: 26px;
   border-radius: 50%;
   background: #fff;
-  border: 3px solid var(--color-accent);
-  box-shadow: 0 4px 10px rgba(76, 111, 255, 0.35);
+  border: 3px solid var(--mission-accent, var(--color-accent));
+  box-shadow: 0 4px 10px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 35%, transparent);
   cursor: pointer;
 }
 
@@ -380,8 +475,51 @@
   font-size: 0.82rem;
 }
 
+/* Start Mission is the hero CTA: bigger, pill-shaped, tinted to the
+   selected mission's accent, with a play-glyph rather than a plain
+   form-submit look. */
 #start-btn {
   margin-top: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 48px;
+  font-size: 1.2rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border-radius: 999px;
+  background: var(--mission-accent, var(--color-accent));
+  box-shadow: 0 16px 34px -12px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 60%, transparent),
+    0 4px 10px -4px rgba(0, 0, 0, 0.25);
+}
+
+#start-btn::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 13px solid currentColor;
+  flex-shrink: 0;
+}
+
+#start-btn:hover {
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 85%, black);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px -14px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 65%, transparent),
+    0 6px 14px -6px rgba(0, 0, 0, 0.3);
+}
+
+#start-btn:active {
+  transform: scale(0.97);
+}
+
+/* Selection/interaction chrome on the setup screen adopts the selected
+   mission's accent for its focus ring too, so keyboard focus matches the
+   same identity color as the hover/selected states. */
+.screen-setup button:focus-visible,
+.screen-setup input:focus-visible {
+  outline-color: var(--mission-accent, var(--color-accent));
 }
 
 /* ==================== Session screen (dark mission world) ==================== */
@@ -398,6 +536,15 @@
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  /* Matches the Rocket sky gradient's darkest stop so there's no mismatched
+     flash/edge while the theme's full-bleed ("slice") SVG mounts. */
+  background: #050810;
+}
+
+.stage svg {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .hud-top {
@@ -577,7 +724,7 @@
 
 .wake-meter-fill {
   height: 100%;
-  width: 0%;
+  width: 100%;
   border-radius: 999px;
   /* Cool -> warm -> urgent progression matching the Safe/Building/Warning/
      Final Warning/Launch status bands, not just an accent gradient. */
@@ -587,7 +734,12 @@
     var(--color-warning) 65%,
     #ff7a45 85%,
     var(--color-danger) 100%);
-  transition: width 0.4s ease;
+  /* scaleX instead of animating width: background gradients auto-size to
+     the element's own box either way, so this renders identically to the
+     old width-based fill while avoiding a layout pass on every update. */
+  transform-origin: left center;
+  transform: scaleX(0);
+  transition: transform 0.4s ease;
 }
 
 .meter-scale {
@@ -599,6 +751,149 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
+}
+
+/* ==================== Rocket-specific HUD: Launch Energy instrument ====
+   Everything below is scoped under [data-theme="rocket"] (set on
+   #screen-session by app.js only while the Rocket theme is mounted), so
+   none of it touches Dragon's rendering — Dragon keeps the rules above
+   exactly as they were. No new HUD elements: same #hud-bottom/#meter-*/
+   #wake-meter-fill nodes app.js already updates, restyled per mission and
+   driven by the data-level it already mirrors onto #hud-bottom. */
+
+.screen-session[data-theme="rocket"] .hud-objective {
+  border-left: none;
+  padding-left: 14px;
+  position: relative;
+}
+
+.screen-session[data-theme="rocket"] .hud-objective::before,
+.screen-session[data-theme="rocket"] .hud-objective::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid var(--mission-accent, var(--color-accent));
+}
+
+.screen-session[data-theme="rocket"] .hud-objective::before {
+  top: -2px;
+  border-top: 2px solid var(--mission-accent, var(--color-accent));
+}
+
+.screen-session[data-theme="rocket"] .hud-objective::after {
+  bottom: -2px;
+  border-bottom: 2px solid var(--mission-accent, var(--color-accent));
+}
+
+.screen-session[data-theme="rocket"] .meter-header {
+  position: relative;
+}
+
+.screen-session[data-theme="rocket"] .meter-label {
+  color: var(--mission-accent, var(--color-text-muted));
+}
+
+.screen-session[data-theme="rocket"] .meter-percent {
+  font-variant-numeric: tabular-nums;
+  background: rgba(8, 14, 28, 0.55);
+  padding: 2px 8px;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+/* Instrument housing: a recessed panel instead of a plain rounded bar
+   track, with control-panel tick marks at 25/50/75 drawn via a hard-stop
+   gradient overlay — no extra DOM for the ticks. */
+.screen-session[data-theme="rocket"] .wake-meter-track {
+  position: relative;
+  height: 22px;
+  border-radius: 6px;
+  background: rgba(8, 14, 28, 0.65);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 2px 6px rgba(0, 0, 0, 0.5);
+  transition: box-shadow 0.3s ease;
+}
+
+.screen-session[data-theme="rocket"] .wake-meter-track::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(90deg,
+    transparent 24.6%, rgba(255, 255, 255, 0.4) 25%, transparent 25.4%,
+    transparent 49.6%, rgba(255, 255, 255, 0.4) 50%, transparent 50.4%,
+    transparent 74.6%, rgba(255, 255, 255, 0.4) 75%, transparent 75.4%);
+}
+
+/* Fill recolors per band instead of always painting the full rainbow —
+   reads as "systems nominal -> energy building -> danger", matching the
+   Stable/Building/Warning/Danger language in the mission brief. */
+.screen-session[data-theme="rocket"] #wake-meter-fill {
+  border-radius: 4px;
+  background: linear-gradient(90deg, #2dd4c8, #22b8cf);
+  box-shadow: none;
+  transition: transform 0.4s ease, background 0.3s ease;
+}
+
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="building"] #wake-meter-fill {
+  background: linear-gradient(90deg, #22b8cf, #ffb347);
+}
+
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="warning"] #wake-meter-fill {
+  background: linear-gradient(90deg, #ffb347, #ff8c5a);
+}
+
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="final"] #wake-meter-fill {
+  background: linear-gradient(90deg, #ff8c5a, #ff6b6b);
+}
+
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="launch"] #wake-meter-fill {
+  background: #ff6b6b;
+}
+
+/* Restrained glow that escalates with the band — housing only, so it
+   reads as "instrument panel lighting up," not a chaotic bar effect. */
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="warning"] .wake-meter-track {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 2px 6px rgba(0, 0, 0, 0.5),
+    0 0 14px color-mix(in srgb, var(--color-warning) 55%, transparent);
+}
+
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="final"] .wake-meter-track,
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="launch"] .wake-meter-track {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), inset 0 2px 6px rgba(0, 0, 0, 0.5),
+    0 0 20px color-mix(in srgb, var(--color-danger) 60%, transparent);
+}
+
+/* Small pulsing warning dot beside the label — only once the class is
+   genuinely close to a launch, positioned absolutely so it never shifts
+   the centered label/status/percent row. */
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="final"] .meter-header::before,
+.screen-session[data-theme="rocket"] #hud-bottom[data-level="launch"] .meter-header::before {
+  content: "";
+  position: absolute;
+  left: -18px;
+  top: 50%;
+  margin-top: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  box-shadow: 0 0 8px var(--color-danger);
+  animation: launch-energy-warn 1s ease-in-out infinite;
+}
+
+@keyframes launch-energy-warn {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-session[data-theme="rocket"] .meter-header::before {
+    animation: none;
+    opacity: 1;
+  }
 }
 
 /* ==================== Result screen (win/fail, light shell) ==================== */

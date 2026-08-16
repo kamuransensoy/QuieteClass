@@ -19,7 +19,7 @@
         <p class="brand-tagline">Make quiet time feel like a mission.</p>
       </header>
 
-      <h2 class="setup-section-label">Choose a Mission</h2>
+      <h2 class="setup-section-label setup-section-label-hero">Choose a Mission</h2>
       <div id="theme-picker" class="theme-cards" role="listbox" aria-label="Theme selection"></div>
 
       <h2 class="setup-section-label">Mission Time</h2>
@@ -50,42 +50,50 @@
         <button type="button" id="custom-plus" class="stepper-btn" aria-label="Increase 30 seconds">+</button>
       </div>
 
-      <h2 class="setup-section-label">Room Setup</h2>
-      <div class="room-setup">
-        <div id="calibration-panel" class="calibration-panel">
-          <div id="calibration-idle" class="calibration-state">
-            <p class="calibration-title">Room Calibration</p>
-            <p class="calibration-status-text">Optional — adapts QuietClass to this room's background noise.</p>
-            <button type="button" id="calibrate-btn" class="btn btn-secondary">Calibrate Room</button>
+      <details class="room-setup-details">
+        <summary class="room-setup-summary">
+          <span class="room-setup-summary-chevron" aria-hidden="true"></span>
+          <span class="room-setup-summary-text">
+            <span class="room-setup-summary-label">Room Setup</span>
+            <span id="room-setup-summary-status" class="room-setup-summary-status">Optional</span>
+          </span>
+        </summary>
+        <div class="room-setup">
+          <div id="calibration-panel" class="calibration-panel">
+            <div id="calibration-idle" class="calibration-state">
+              <p class="calibration-title">Room Calibration</p>
+              <p class="calibration-status-text">Optional — adapts QuietClass to this room's background noise.</p>
+              <button type="button" id="calibrate-btn" class="btn btn-secondary">Calibrate Room</button>
+            </div>
+            <div id="calibration-running" class="calibration-state" hidden>
+              <p class="calibration-status-text">Calibrating your room&hellip;</p>
+              <p class="calibration-hint">Ask your class to use their normal independent-work voice level.</p>
+              <div id="calibration-countdown" class="calibration-countdown">5</div>
+            </div>
+            <div id="calibration-done" class="calibration-state" hidden>
+              <p class="calibration-status-text calibration-ready">Room Ready ✓</p>
+              <button type="button" id="recalibrate-btn" class="btn btn-ghost-light">Recalibrate</button>
+            </div>
+            <div id="calibration-failed" class="calibration-state" hidden>
+              <p class="calibration-status-text">Couldn't access the microphone.</p>
+              <button type="button" id="calibration-retry-btn" class="btn btn-secondary">Try Again</button>
+            </div>
           </div>
-          <div id="calibration-running" class="calibration-state" hidden>
-            <p class="calibration-status-text">Calibrating your room&hellip;</p>
-            <p class="calibration-hint">Ask your class to use their normal independent-work voice level.</p>
-            <div id="calibration-countdown" class="calibration-countdown">5</div>
-          </div>
-          <div id="calibration-done" class="calibration-state" hidden>
-            <p class="calibration-status-text calibration-ready">Room Ready ✓</p>
-            <button type="button" id="recalibrate-btn" class="btn btn-ghost-light">Recalibrate</button>
-          </div>
-          <div id="calibration-failed" class="calibration-state" hidden>
-            <p class="calibration-status-text">Couldn't access the microphone.</p>
-            <button type="button" id="calibration-retry-btn" class="btn btn-secondary">Try Again</button>
-          </div>
-        </div>
 
-        <div class="sensitivity-panel">
-          <div class="sensitivity-header">
-            <label for="sensitivity-slider" class="sensitivity-label">Sensitivity</label>
-            <span id="sensitivity-value" class="sensitivity-value">65%</span>
+          <div class="sensitivity-panel">
+            <div class="sensitivity-header">
+              <label for="sensitivity-slider" class="sensitivity-label">Sensitivity</label>
+              <span id="sensitivity-value" class="sensitivity-value">65%</span>
+            </div>
+            <input type="range" id="sensitivity-slider" min="0" max="100" step="5" value="65" aria-label="Sensitivity percentage" />
+            <div class="sensitivity-row">
+              <span class="sensitivity-endpoint">Less Reactive</span>
+              <span class="sensitivity-endpoint">More Reactive</span>
+            </div>
+            <p class="sensitivity-hint">Higher sensitivity makes QuietClass react to smaller increases in classroom noise.</p>
           </div>
-          <input type="range" id="sensitivity-slider" min="0" max="100" step="5" value="65" aria-label="Sensitivity percentage" />
-          <div class="sensitivity-row">
-            <span class="sensitivity-endpoint">Less Reactive</span>
-            <span class="sensitivity-endpoint">More Reactive</span>
-          </div>
-          <p class="sensitivity-hint">Higher sensitivity makes QuietClass react to smaller increases in classroom noise.</p>
         </div>
-      </div>
+      </details>
 
       <button type="button" id="start-btn" class="btn btn-primary btn-large">Start Mission</button>
     </div>
@@ -121,7 +129,7 @@
       </div>
     </div>
 
-    <div class="hud-bottom">
+    <div id="hud-bottom" class="hud-bottom">
       <div class="meter-header">
         <span id="meter-label" class="meter-label">Wake Meter</span>
         <span id="meter-status" class="meter-status" data-level="safe">Safe</span>

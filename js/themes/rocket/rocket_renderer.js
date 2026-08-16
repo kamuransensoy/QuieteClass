@@ -28,13 +28,13 @@ const MAX_TICK_DT_MS = 100;
 // retune the Rocket's "feel" without touching layout/timing code.
 const BANDS = {
   controlLights: [0.15, 0.40],
-  engineGlow: [0.18, 0.65],
-  engineCore: [0.55, 0.99],
-  vibration: [0.45, 1.00],
-  vapor: [0.20, 0.85],
-  platformReact: [0.55, 0.95],
-  clampStrain: [0.65, 1.00],
-  flame: [0.78, 1.00],
+  engineGlow: [0.15, 0.55],
+  engineCore: [0.48, 0.97],
+  vibration: [0.40, 0.98],
+  vapor: [0.15, 0.75],
+  platformReact: [0.45, 0.92],
+  clampStrain: [0.60, 0.98],
+  flame: [0.72, 0.99],
 };
 
 // One-shot LAUNCH sequence, entirely procedural — this theme authors its
@@ -130,13 +130,13 @@ function renderAmbient() {
   }
 
   // Deterministic layered vibration — two incommensurate frequencies, tiny amplitude.
-  const vib = (Math.sin(t * 37) * 0.6 + Math.sin(t * 71 + 1.3) * 0.4) * vibration * 1.8;
+  const vib = (Math.sin(t * 37) * 0.6 + Math.sin(t * 71 + 1.3) * 0.4) * vibration * 2.6;
   if (changed("vibration", vib)) {
     nodes.rocket.group.style.transform = `translate(170px,296px) translate(${vib.toFixed(2)}px,0)`;
   }
 
   if (changed("vapor", vapor)) {
-    nodes.vapor.group.style.setProperty("--vapor-peak", (0.15 + vapor * 0.45).toFixed(2));
+    nodes.vapor.group.style.setProperty("--vapor-peak", (0.15 + vapor * 0.6).toFixed(2));
     nodes.vapor.group.style.setProperty("--vapor-dur", `${(2.8 - vapor * 1.4).toFixed(2)}s`);
     nodes.vapor.group.style.opacity = Math.min(1, vapor + 0.05).toFixed(2);
   }

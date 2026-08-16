@@ -60,6 +60,7 @@ const customPlusBtn = document.getElementById("custom-plus");
 const countdownEl = document.getElementById("countdown");
 const hudMissionTitleEl = document.getElementById("hud-mission-title");
 const hudMissionHintEl = document.getElementById("hud-mission-hint");
+const hudBottomEl = document.getElementById("hud-bottom");
 const meterLabelEl = document.getElementById("meter-label");
 const meterStatusEl = document.getElementById("meter-status");
 const meterPercentEl = document.getElementById("meter-percent");
@@ -82,6 +83,7 @@ const calibrationStates = {
 };
 const sensitivitySlider = document.getElementById("sensitivity-slider");
 const sensitivityValueEl = document.getElementById("sensitivity-value");
+const roomSetupStatusEl = document.getElementById("room-setup-summary-status");
 
 let selectedThemeId = null;
 let selectedDurationSeconds = 300;
@@ -117,8 +119,10 @@ function renderThemePicker() {
     themeOption.setAttribute("aria-selected", index === 0 ? "true" : "false");
     themeOption.style.setProperty("--card-accent", theme.accentColor || "var(--color-accent)");
     themeOption.innerHTML = `<span class="thumb">${theme.thumbnail}</span>
-      <span class="theme-name">${theme.name}</span>
-      <span class="theme-objective">${theme.missionTitle}</span>`;
+      <span class="theme-body">
+        <span class="theme-name">${theme.name}</span>
+        <span class="theme-objective">${theme.missionTitle}</span>
+      </span>`;
     themeOption.addEventListener("click", () => {
       Array.from(themePickerEl.children).forEach((child) => child.setAttribute("aria-selected", "false"));
       themeOption.setAttribute("aria-selected", "true");
@@ -194,11 +198,20 @@ function showCalibrationState(name) {
   });
 }
 
+// Mirrors calibration.js's own calibrated flag into the collapsed Room
+// Setup summary — display-only, no calibration state lives here.
+function updateRoomSetupSummary(calibrated) {
+  if (!roomSetupStatusEl) return;
+  roomSetupStatusEl.textContent = calibrated ? "Room Ready ✓" : "Optional";
+  roomSetupStatusEl.dataset.ready = calibrated ? "true" : "false";
+}
+
 function refreshCalibrationUI() {
   const cal = getCalibrationState();
   showCalibrationState(cal.calibrated ? "done" : "idle");
   sensitivitySlider.value = String(cal.sensitivityPercent);
   sensitivityValueEl.textContent = `${cal.sensitivityPercent}%`;
+  updateRoomSetupSummary(cal.calibrated);
 }
 
 async function beginCalibration() {
@@ -216,6 +229,7 @@ async function beginCalibration() {
   } else {
     showCalibrationState("failed");
   }
+  updateRoomSetupSummary(getCalibrationState().calibrated);
 }
 
 function initCalibrationUI() {
@@ -308,6 +322,7 @@ function render(state) {
         activeTheme.onSessionEnd();
         activeTheme.unmount(stageEl);
         activeTheme = null;
+        screens.session.removeAttribute("data-theme");
       }
       if (state.status === "ended" && state.result) {
         setActiveScreen("result");
@@ -324,6 +339,10 @@ function render(state) {
         const theme = getTheme(selectedThemeId);
         if (theme) {
           activeTheme = theme;
+          // Lets HUD chrome (see layout.css) apply theme-specific styling
+          // — e.g. the Rocket Launch Energy instrument — without any
+          // theme reaching into shared HUD DOM itself.
+          screens.session.dataset.theme = theme.id;
           activeTheme.mount(stageEl);
         } else {
           // No silent fallback to any theme (e.g. Dragon): if selectedThemeId
@@ -345,7 +364,9 @@ function render(state) {
     const pct = Math.round(Math.max(0, Math.min(100, state.wakeMeter)));
     if (pct !== lastMeterWidth) {
       lastMeterWidth = pct;
-      meterFillEl.style.width = `${pct}%`;
+      // transform instead of width: same visual fill length (see
+      // layout.css), but avoids triggering layout on every update.
+      meterFillEl.style.transform = `scaleX(${(pct / 100).toFixed(4)})`;
       meterPercentEl.textContent = `${pct}%`;
     }
     const band = meterBandFor(pct);
@@ -353,6 +374,7 @@ function render(state) {
       lastMeterLevel = band.level;
       meterStatusEl.textContent = band.label;
       meterStatusEl.setAttribute("data-level", band.level);
+      hudBottomEl.setAttribute("data-level", band.level);
     }
 
     // Forwarded on every update: each theme dedupes internally against
