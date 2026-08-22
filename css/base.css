@@ -29,6 +29,51 @@
   --space-4: 40px;
   --font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, sans-serif;
+
+  /* Rocket theme palette — warm retro-space tones lifted from the approved
+     reference illustration (deep forest green / cream / burnt terracotta).
+     Always defined so both the light setup shell and the dark session
+     screen can reference the same tokens; only consumed by rules scoped to
+     the Rocket theme (data-selected-theme="rocket" / [data-theme="rocket"]).
+     Dragon never reads these — its own accentColor/tokens are untouched. */
+  --rocket-deep: #1a2521;
+  --rocket-surface: #2c3d37;
+  --rocket-surface-soft: #3d4d46;
+  --rocket-cream: #f5ead9;
+  --rocket-orange: #b96e4f;
+  --rocket-gold: #cf9f6c;
+  --rocket-danger: #a05a41;
+
+  /* Dragon theme palette — warm coral/gold den tones, deliberately
+     distinct from Rocket's forest/terracotta and from the global navy/
+     cyan brand, so Dragon reads as its own mission world. Only consumed
+     by rules scoped to the Dragon theme (data-selected-theme="dragon" /
+     [data-theme="dragon"]) — Rocket never reads these. */
+  --dragon-deep: #1b1512;
+  --dragon-surface: #2e2420;
+  --dragon-surface-soft: #40312a;
+  --dragon-cream: #f5e6c8;
+  --dragon-coral: #ff7a45;
+  --dragon-gold: #e8b34d;
+  --dragon-amber: #ffb020;
+
+  /* QuietClass BRAND palette — the product's own global identity (Welcome,
+     small Setup mark), deliberately separate from --rocket-* and
+     --mission-accent so it never shifts with whichever mission happens to
+     be selected. Cool navy/blue/cyan family — distinct from any single
+     mission's own palette (e.g. Rocket's warm orange/cream) so branding
+     stays coherent as more missions are added. --brand-deep/-surface/
+     -cream/-accent are kept as the names every existing rule already
+     reads; only their values changed to this palette. */
+  --brand-navy: #172033;
+  --brand-blue: #1677a6;
+  --brand-cyan: #23b7c9;
+  --brand-sky: #5bc6de;
+  --brand-offwhite: #f7f5f0;
+  --brand-deep: var(--brand-navy);
+  --brand-surface: var(--brand-blue);
+  --brand-cream: var(--brand-offwhite);
+  --brand-accent: var(--brand-cyan);
 }
 
 .shell {

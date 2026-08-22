@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>QuietClass</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 46'%3E%3Crect width='46' height='46' rx='14' fill='%231677A6'/%3E%3Crect x='13' y='17' width='5' height='12' rx='2.5' fill='%23F7F5F0'/%3E%3Crect x='20.5' y='11' width='5' height='24' rx='2.5' fill='%23F7F5F0'/%3E%3Crect x='28' y='15' width='5' height='16' rx='2.5' fill='%23F7F5F0'/%3E%3C/svg%3E" />
 <link rel="stylesheet" href="css/base.css" />
 <link rel="stylesheet" href="css/layout.css" />
 </head>
@@ -11,18 +12,109 @@
 
 <main id="app">
 
+  <!-- App-entry screen: QuietClass product identity, shown once on a
+       fresh page load only — never re-shown after Choose New Mission or
+       Play Again (see app.js's status==="idle" vs "ended" branching). -->
+  <section id="screen-welcome" class="screen shell screen-welcome" data-active="true">
+    <video class="welcome-bg-video" autoplay muted loop playsinline aria-hidden="true">
+      <source src="assets/ui/welcome_background.mp4" type="video/mp4" />
+    </video>
+    <div class="welcome-card">
+      <span class="brand-mark brand-mark--lg" aria-hidden="true">
+        <span class="brand-mark-bar brand-mark-bar-1"></span>
+        <span class="brand-mark-bar brand-mark-bar-2"></span>
+        <span class="brand-mark-bar brand-mark-bar-3"></span>
+      </span>
+      <h1 class="welcome-title">QuietClass</h1>
+      <p class="welcome-tagline">Make quiet time feel like a mission.</p>
+      <button type="button" id="welcome-start-btn" class="welcome-start-btn">Let's Get Started</button>
+      <button type="button" id="how-it-works-btn" class="how-it-works-btn">
+        <span class="how-it-works-icon" aria-hidden="true">&#9432;</span>
+        How It Works
+      </button>
+      <button type="button" id="welcome-sound-toggle-btn" class="welcome-sound-toggle" aria-pressed="true">
+        <span class="welcome-sound-icon" aria-hidden="true"></span>
+        <span id="welcome-sound-label">Sounds On</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- How It Works: compact accessible modal, opened from Welcome only.
+       Reuses the light .shell tokens since it's a QuietClass-product
+       (not mission) surface. Hidden by default via [hidden]. -->
+  <div id="how-it-works-modal" class="how-it-works-overlay shell" hidden>
+    <div class="how-it-works-dialog" role="dialog" aria-modal="true" aria-labelledby="how-it-works-title">
+      <button type="button" id="how-it-works-close-btn" class="how-it-works-x" aria-label="Close">&times;</button>
+      <h2 id="how-it-works-title" class="how-it-works-heading">How QuietClass Works</h2>
+      <ol class="how-it-works-steps">
+        <li>
+          <span class="how-it-works-step-title">1. Choose a Voice Level</span>
+          <span class="how-it-works-step-body">Tell QuietClass how much talking is allowed.</span>
+        </li>
+        <li>
+          <span class="how-it-works-step-title">2. Set the Mission Time</span>
+          <span class="how-it-works-step-body">Choose how long your class will play.</span>
+        </li>
+        <li>
+          <span class="how-it-works-step-title">3. Start the Mission</span>
+          <span class="how-it-works-step-body">QuietClass listens to the overall classroom noise level.</span>
+        </li>
+        <li>
+          <span class="how-it-works-step-title">4. Keep the Mission Safe</span>
+          <span class="how-it-works-step-body">If the room gets too loud, the mission's energy meter rises.</span>
+        </li>
+        <li>
+          <span class="how-it-works-step-title">5. Complete the Mission</span>
+          <span class="how-it-works-step-body">Keep the noise under control until the timer reaches zero.</span>
+        </li>
+      </ol>
+      <div class="how-it-works-privacy">
+        <p class="how-it-works-privacy-label">Privacy</p>
+        <p class="how-it-works-privacy-body">QuietClass measures overall sound level. It does not need to understand or record what students are saying.</p>
+      </div>
+      <button type="button" id="how-it-works-got-it-btn" class="btn btn-primary how-it-works-got-it">Got It</button>
+    </div>
+  </div>
+
   <!-- Pre-session screen: light "product shell" layer -->
-  <section id="screen-setup" class="screen shell screen-setup" data-active="true">
+  <section id="screen-setup" class="screen shell screen-setup" data-active="false">
     <div class="setup-card">
       <header class="brand-header">
-        <p class="brand-name">QuietClass</p>
-        <p class="brand-tagline">Make quiet time feel like a mission.</p>
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-mark-bar brand-mark-bar-1"></span>
+          <span class="brand-mark-bar brand-mark-bar-2"></span>
+          <span class="brand-mark-bar brand-mark-bar-3"></span>
+        </span>
+        <span class="brand-copy">
+          <p class="brand-name">QuietClass</p>
+          <p class="brand-tagline">Make quiet time feel like a mission.</p>
+        </span>
       </header>
 
-      <h2 class="setup-section-label setup-section-label-hero">Choose a Mission</h2>
+      <h2 class="setup-section-label setup-section-label-hero">
+        <span class="setup-section-number">1</span>
+        <span class="setup-section-text">Choose a Mission</span>
+      </h2>
       <div id="theme-picker" class="theme-cards" role="listbox" aria-label="Theme selection"></div>
 
-      <h2 class="setup-section-label">Mission Time</h2>
+      <h2 class="setup-section-label">
+        <span class="setup-section-number">2</span>
+        <span class="setup-section-text">Voice Level</span>
+      </h2>
+      <div id="voice-level-picker" class="voice-level-picker" role="listbox" aria-label="Voice level">
+        <button type="button" class="voice-level-option" data-level="0" aria-selected="true">0</button>
+        <button type="button" class="voice-level-option" data-level="1" aria-selected="false">1</button>
+        <button type="button" class="voice-level-option" data-level="2" aria-selected="false">2</button>
+        <button type="button" class="voice-level-option" data-level="3" aria-selected="false">3</button>
+      </div>
+      <p id="voice-level-caption" class="voice-level-caption">
+        <strong>Silent</strong> — No talking
+      </p>
+
+      <h2 class="setup-section-label">
+        <span class="setup-section-number">3</span>
+        <span class="setup-section-text">Mission Time</span>
+      </h2>
       <div id="duration-picker" class="duration-picker" role="listbox" aria-label="Mission duration">
         <button type="button" class="duration-option" data-duration="120">
           <span class="duration-value">2</span><span class="duration-unit">MIN</span>
@@ -51,12 +143,16 @@
       </div>
 
       <details class="room-setup-details">
-        <summary class="room-setup-summary">
-          <span class="room-setup-summary-chevron" aria-hidden="true"></span>
+        <summary class="room-setup-summary" data-ui-sound="click">
+          <span class="room-setup-summary-number" aria-hidden="true">4</span>
           <span class="room-setup-summary-text">
-            <span class="room-setup-summary-label">Room Setup</span>
-            <span id="room-setup-summary-status" class="room-setup-summary-status">Optional</span>
+            <span class="room-setup-summary-toprow">
+              <span class="room-setup-summary-label">Room Setup</span>
+              <span id="room-setup-summary-status" class="room-setup-summary-status">Optional</span>
+            </span>
+            <span class="room-setup-summary-subtext">Calibration &middot; Advanced Sensitivity</span>
           </span>
+          <span class="room-setup-summary-chevron" aria-hidden="true"></span>
         </summary>
         <div class="room-setup">
           <div id="calibration-panel" class="calibration-panel">
@@ -82,7 +178,7 @@
 
           <div class="sensitivity-panel">
             <div class="sensitivity-header">
-              <label for="sensitivity-slider" class="sensitivity-label">Sensitivity</label>
+              <label for="sensitivity-slider" class="sensitivity-label">Advanced Sensitivity</label>
               <span id="sensitivity-value" class="sensitivity-value">65%</span>
             </div>
             <input type="range" id="sensitivity-slider" min="0" max="100" step="5" value="65" aria-label="Sensitivity percentage" />
@@ -94,6 +190,14 @@
           </div>
         </div>
       </details>
+
+      <div class="mission-sounds-row">
+        <span class="mission-sounds-label">Mission Sounds</span>
+        <div id="mission-sounds-toggle" class="mission-sounds-toggle" role="radiogroup" aria-label="Mission sounds">
+          <button type="button" class="mission-sounds-option" data-sounds="on" aria-selected="true">On</button>
+          <button type="button" class="mission-sounds-option" data-sounds="off" aria-selected="false">Off</button>
+        </div>
+      </div>
 
       <button type="button" id="start-btn" class="btn btn-primary btn-large">Start Mission</button>
     </div>
@@ -111,6 +215,15 @@
     <p class="hint">If nothing happens, check your browser's site permissions and allow the microphone for this page.</p>
   </section>
 
+  <!-- Countdown: fullscreen near-black transition between Setup and the
+       live mission. Number only — no mission chrome, no HUD. app.js drives
+       this directly via setActiveScreen("countdown"), independent of
+       state.js's status (see runCountdown()/beginMission()). -->
+  <section id="screen-countdown" class="screen screen-countdown" data-active="false">
+    <p class="countdown-sr-only" aria-live="polite">Mission starting</p>
+    <div id="countdown-number" class="countdown-number" aria-hidden="true">5</div>
+  </section>
+
   <!-- Active mission screen: dark "mission world" layer -->
   <section id="screen-session" class="screen screen-session" data-active="false">
     <div id="stage" class="stage" aria-live="off"></div>
@@ -119,48 +232,87 @@
       <div class="hud-objective">
         <p id="hud-mission-title" class="hud-mission-title">Keep the Dragon Asleep</p>
         <p id="hud-mission-hint" class="hud-mission-hint">Stay quiet until the timer reaches zero.</p>
+        <div class="hud-status-row">
+          <span id="hud-voice-level" class="hud-voice-level"></span>
+          <span id="hud-streak-chip" class="hud-streak-chip"></span>
+        </div>
       </div>
       <div class="hud-top-right">
-        <div id="countdown" class="hud-countdown">05:00</div>
+        <div class="hud-countdown-row">
+          <span class="hud-clock-icon" aria-hidden="true"></span>
+          <div id="countdown" class="hud-countdown">05:00</div>
+          <span id="hud-paused-badge" class="hud-paused-badge" hidden>Paused</span>
+        </div>
         <div id="session-overlay" class="session-controls">
-          <button id="pause-btn" class="control-btn" type="button">Pause</button>
-          <button id="end-btn" class="control-btn" type="button">End</button>
+          <button id="pause-btn" class="control-btn control-btn-pause" type="button">
+            <span class="control-btn-icon control-btn-icon-pause" aria-hidden="true"></span>
+            <span class="control-btn-icon control-btn-icon-play" aria-hidden="true" hidden></span>
+            <span id="pause-btn-label" class="control-btn-label">Pause</span>
+          </button>
+          <button id="end-btn" class="control-btn control-btn-end" type="button">End</button>
+          <button id="sound-toggle-btn" class="control-btn control-btn-sound" type="button" aria-pressed="true">
+            <span id="sound-toggle-label" class="control-btn-label">Sound On</span>
+          </button>
         </div>
       </div>
     </div>
 
     <div id="hud-bottom" class="hud-bottom">
-      <div class="meter-header">
-        <span id="meter-label" class="meter-label">Wake Meter</span>
-        <span id="meter-status" class="meter-status" data-level="safe">Safe</span>
-        <span id="meter-percent" class="meter-percent">0%</span>
-      </div>
-      <div class="wake-meter-track">
-        <div id="wake-meter-fill" class="wake-meter-fill"></div>
-      </div>
-      <div class="meter-scale">
-        <span>Safe</span><span>Warning</span><span>Launch</span>
+      <div class="energy-panel">
+        <div class="meter-header">
+          <span id="meter-label" class="meter-label">Wake Meter</span>
+          <span id="meter-status" class="meter-status" data-level="safe">Safe</span>
+          <span id="meter-percent" class="meter-percent">0%</span>
+        </div>
+        <div class="wake-meter-track">
+          <div id="wake-meter-fill" class="wake-meter-fill"></div>
+        </div>
+        <div class="meter-scale">
+          <span>Safe</span><span>Warning</span><span>Launch</span>
+        </div>
+        <div id="mission-rating" class="mission-rating">
+          <span class="mission-rating-stars">
+            <span class="rating-star" data-star="0">★</span><span class="rating-star" data-star="1">★</span><span class="rating-star" data-star="2">★</span>
+          </span>
+          <span id="mission-rating-label" class="mission-rating-label">Perfect Mission</span>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Mission result screen: light "product shell" layer -->
-  <section id="screen-result" class="screen shell screen-result" data-active="false" data-result="">
+  <!-- Mission result screen: dark, mission-accented — part of the mission
+       world, not a light-shell modal. -->
+  <section id="screen-result" class="screen screen-result" data-active="false" data-result="">
     <div id="result-fx" class="result-fx" aria-hidden="true">
       <span class="smoke-puff smoke-puff-1"></span>
       <span class="smoke-puff smoke-puff-2"></span>
       <span class="smoke-puff smoke-puff-3"></span>
     </div>
-    <div id="result-card" class="result-card">
-      <h1 id="result-title" class="app-title result-title"></h1>
-      <p id="result-subtitle" class="app-subtitle result-subtitle"></p>
-      <p id="result-line" class="hint result-line"></p>
-      <button id="result-btn" class="btn btn-primary btn-large" type="button"></button>
+    <div id="result-content" class="result-content">
+      <h1 id="result-title" class="result-title"></h1>
+      <p id="result-line" class="result-line"></p>
+      <div id="result-rating" class="result-rating">
+        <span id="result-rating-stars" class="result-rating-stars"></span>
+        <span id="result-rating-label" class="result-rating-label"></span>
+      </div>
+      <div id="result-streak" class="result-streak">
+        <span id="result-streak-label" class="result-streak-label"></span>
+        <span id="result-streak-value" class="result-streak-value"></span>
+      </div>
+      <div class="result-actions">
+        <button id="result-primary-btn" class="btn btn-primary btn-large" type="button"></button>
+        <button id="result-secondary-btn" class="result-secondary-btn" type="button">Choose New Mission</button>
+      </div>
     </div>
   </section>
 
 </main>
 
+<!-- Vendored locally (js/vendor/gsap.min.js, unmodified) — no CDN, no
+     network dependency. Classic global script because GSAP's dist build
+     is UMD, not a native ES module; js/vendor/gsap-esm.js re-exports the
+     resulting window.gsap for normal ES imports (see dragon_renderer.js). -->
+<script src="js/vendor/gsap.min.js"></script>
 <script type="module" src="js/core/app.js"></script>
 </body>
 </html>

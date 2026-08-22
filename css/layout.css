@@ -20,229 +20,852 @@
   display: flex;
 }
 
-.app-title {
-  font-family: var(--font-display);
-  font-size: 2.5rem;
-  font-weight: 700;
+/* ==================== Welcome screen (app entry, light shell) ========
+   QuietClass's own product identity — neutral brand tokens only
+   (--brand-*), never --mission-accent/--rocket-*, so nothing here shifts
+   with whichever mission is later selected. Shown once per fresh load;
+   see app.js's status==="idle" branch. */
+
+.screen-welcome {
+  position: relative;
+  overflow: hidden;
+  /* Same overflow trap .screen-setup already guards against — content
+     stays reachable by scrolling rather than centering off the top of a
+     short viewport (see section 26 of the brief). */
+  justify-content: safe center;
+  /* Fallback only, in case the video is still loading/blocked — matches
+     the video's own light tone so there's no flash of mismatched color. */
+  background: #eef1f6;
 }
 
-.app-subtitle {
+/* Fullscreen background video (assets/ui/welcome_background.mp4) — fills
+   the viewport via object-fit:cover, sits behind all content, never
+   affects document layout or creates scrollbars. Native <video>, no
+   canvas/frame processing (see performance constraints). */
+.welcome-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* Restrained readability scrim — a gentle top/bottom vignette only, so the
+   video's flowing blue-ink forms stay clearly visible through the middle
+   of the screen. No card, no large overlay panel: content is meant to
+   visually belong to the background, not sit on top of it. */
+.screen-welcome::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg,
+    rgba(23, 32, 51, 0.22) 0%,
+    rgba(23, 32, 51, 0.02) 26%,
+    rgba(23, 32, 51, 0.02) 70%,
+    rgba(23, 32, 51, 0.3) 100%);
+}
+
+.welcome-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 480px;
+}
+
+/* Soft local light behind the text/CTA block only — a restrained blur +
+   low-opacity glow, not a card (no border, no solid fill, no shadow), so
+   the video keeps reading through it while text/buttons stay legible over
+   whatever part of the ink happens to drift behind them. */
+.welcome-card::before {
+  content: "";
+  position: absolute;
+  inset: -6% -22%;
+  z-index: -1;
+  background: radial-gradient(ellipse 88% 90% at 50% 50%,
+    color-mix(in srgb, var(--brand-offwhite) 68%, transparent) 0%,
+    color-mix(in srgb, var(--brand-offwhite) 34%, transparent) 55%,
+    transparent 85%);
+  /* Same gradient shape drives the mask as the fill, so the blur's
+     intensity fades out in sync with the light patch — without this, a
+     backdrop-filter region has a hard rectangular edge that reads as a
+     visible seam against the video's detailed ink shapes. */
+  -webkit-mask-image: radial-gradient(ellipse 88% 90% at 50% 50%, black 55%, transparent 100%);
+  mask-image: radial-gradient(ellipse 88% 90% at 50% 50%, black 55%, transparent 100%);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  pointer-events: none;
+}
+
+.brand-mark--lg {
+  width: 68px;
+  height: 68px;
+  border-radius: 20px;
+  gap: 6px;
+  margin-bottom: clamp(16px, 2.6vh, 24px);
+}
+
+.brand-mark--lg .brand-mark-bar {
+  width: 7px;
+}
+
+.brand-mark--lg .brand-mark-bar-1 { height: 18px; }
+.brand-mark--lg .brand-mark-bar-2 { height: 32px; }
+.brand-mark--lg .brand-mark-bar-3 { height: 24px; }
+
+.welcome-title {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5vw, 3.2rem);
+  font-weight: 650;
+  letter-spacing: 0.005em;
+  line-height: 1.1;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.welcome-tagline {
+  font-size: clamp(1rem, 1.3vw, 1.15rem);
+  font-weight: 500;
+  line-height: 1.5;
   color: var(--color-text-muted);
+  margin: 8px 0 0 0;
+}
+
+/* Primary CTA — deep muted brand surface + warm cream text, deliberately
+   NOT Rocket's terracotta (--mission-accent), since Welcome belongs to
+   QuietClass the product, not any one mission. */
+.welcome-start-btn {
+  margin-top: clamp(28px, 5vh, 40px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(240px, 26vw, 320px);
+  min-height: 54px;
+  padding: 0 clamp(28px, 3vw, 40px);
+  border-radius: 999px;
+  background: var(--brand-deep);
+  color: var(--brand-cream);
+  font-size: clamp(1rem, 1.15vw, 1.1rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 10px 24px -12px rgba(20, 24, 20, 0.35);
+  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+}
+
+.welcome-start-btn:hover {
+  background: color-mix(in srgb, var(--brand-deep) 88%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -12px rgba(20, 24, 20, 0.4);
+}
+
+.welcome-start-btn:active {
+  transform: scale(0.98);
+}
+
+/* How It Works — visually secondary to the primary CTA: text-weight
+   button with a small info glyph, no border/fill of its own. */
+.how-it-works-btn {
+  margin-top: clamp(14px, 2.2vh, 18px);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 999px;
+  color: var(--brand-blue);
+  font-size: 0.92rem;
+  font-weight: 600;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.how-it-works-btn:hover {
+  background: color-mix(in srgb, var(--brand-blue) 10%, transparent);
+}
+
+.how-it-works-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Sound control — visually quiet, clearly secondary to Start a Mission. */
+.welcome-sound-toggle {
+  margin-top: clamp(14px, 2.4vh, 20px);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.welcome-sound-toggle:hover {
+  color: var(--color-text);
+  background: color-mix(in srgb, var(--color-text) 5%, transparent);
+}
+
+.welcome-sound-toggle[aria-pressed="false"] {
+  opacity: 0.55;
+}
+
+/* Small CSS speaker glyph (body + cone) — no icon library. */
+.welcome-sound-icon {
+  position: relative;
+  width: 13px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.welcome-sound-icon::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 3px;
+  width: 5px;
+  height: 6px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.welcome-sound-icon::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 6px solid currentColor;
+}
+
+/* Welcome -> Setup transition — small, fast, never a page slide/zoom. */
+.screen-welcome--leaving {
+  animation: welcome-leave 260ms ease-out forwards;
+}
+
+@keyframes welcome-leave {
+  to { opacity: 0; transform: translateY(-6px); }
+}
+
+.screen-setup--enter .setup-card {
+  animation: setup-enter 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes setup-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==================== How It Works modal ==================== */
+
+.how-it-works-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  background: rgba(23, 32, 51, 0.45);
+}
+
+.how-it-works-overlay[hidden] {
+  display: none;
+}
+
+.how-it-works-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: min(86vh, 640px);
+  overflow-y: auto;
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 24px 60px -20px rgba(23, 32, 51, 0.4);
+  padding: clamp(20px, 4vw, 32px);
+  text-align: left;
+  animation: how-it-works-in 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes how-it-works-in {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.how-it-works-x {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-text) 6%, transparent);
+  color: var(--color-text-muted);
+  font-size: 1.1rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.how-it-works-x:hover {
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
+  color: var(--color-text);
+}
+
+.how-it-works-heading {
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.4vw, 1.6rem);
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0 0 16px 0;
+  padding-right: 30px;
+}
+
+.how-it-works-steps {
+  list-style: none;
+  margin: 0 0 18px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.how-it-works-steps li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.how-it-works-step-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--brand-blue);
+}
+
+.how-it-works-step-body {
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+}
+
+.how-it-works-privacy {
+  border-top: 1px solid color-mix(in srgb, var(--color-text) 10%, transparent);
+  padding-top: 14px;
+  margin-bottom: 18px;
+}
+
+.how-it-works-privacy-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 4px 0;
+}
+
+.how-it-works-privacy-body {
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.how-it-works-got-it {
+  width: 100%;
+  background: var(--brand-blue);
+}
+
+.how-it-works-got-it:hover {
+  background: color-mix(in srgb, var(--brand-blue) 85%, black);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .how-it-works-dialog { animation: none; }
+}
+
+/* ==================== Countdown screen (near-black, number only) ========
+   Fullscreen presentation between Setup and the live mission — driven
+   directly by app.js's setActiveScreen("countdown"), independent of
+   state.js's status. Deliberately minimal: no HUD, no branding, no
+   mission chrome. See section 21-24 of the brief. */
+
+.screen-countdown {
+  position: relative;
+  overflow: hidden;
+  justify-content: safe center;
+  background: #05070a;
+}
+
+.countdown-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.countdown-number {
+  font-family: var(--font-display);
+  font-weight: 650;
+  font-size: clamp(6rem, 22vw, 14rem);
+  line-height: 1;
+  color: #f4f6fa;
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+}
+
+/* Applied fresh (removed, reflowed, re-added) by app.js for every number
+   so the keyframe restarts each tick — see showCountdownNumber(). */
+.countdown-number--tick {
+  animation: countdown-pulse 1000ms ease-in-out both;
+}
+
+@keyframes countdown-pulse {
+  0% { opacity: 0; transform: scale(0.96); }
+  35% { opacity: 1; transform: scale(1); }
+  75% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .countdown-number--tick { animation: none; opacity: 1; }
 }
 
 /* ==================== Setup screen (light shell) ==================== */
 
 .screen-setup {
-  padding: var(--space-3) var(--space-2);
+  position: relative;
+  padding: var(--space-2) var(--space-2);
   overflow-y: auto;
+  /* .screen's justify-content:center traps overflowing content above an
+     unreachable scroll position once expanded Room Setup content exceeds
+     the viewport height — "safe" falls back to start-alignment exactly
+     when content overflows, so the header stays reachable by scrolling
+     instead of disappearing above scrollTop:0. Centers as before whenever
+     content comfortably fits. */
+  justify-content: safe center;
   background: linear-gradient(160deg, var(--color-bg-alt) 0%, var(--color-bg) 45%, #fff5ea 100%);
 }
 
+/* Extremely subtle mission-colored ambient hint behind the whole setup
+   composition — reacts live to --mission-accent (set by selectTheme() in
+   app.js) without introducing a second accent system. Sits behind
+   .setup-card via z-index, never intercepts clicks. */
+.screen-setup::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 42% at 18% 6%, color-mix(in srgb, var(--mission-accent, var(--color-accent)) 13%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 38% at 100% 100%, color-mix(in srgb, var(--mission-accent, var(--color-accent)) 9%, transparent) 0%, transparent 70%);
+  transition: background 0.35s ease;
+}
+
+/* Rocket gets its own richer three-layer wash — a faint forest-green hint
+   plus the warm terracotta/gold accents from the reference illustration —
+   rather than the generic single-accent glow every other theme uses.
+   data-selected-theme is set once by selectTheme() in app.js. */
+:root[data-selected-theme="rocket"] .screen-setup::before {
+  background:
+    radial-gradient(ellipse 55% 40% at 14% 6%, color-mix(in srgb, var(--rocket-surface) 20%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 42% 32% at 82% 26%, color-mix(in srgb, var(--rocket-gold) 12%, transparent) 0%, transparent 66%),
+    radial-gradient(ellipse 48% 36% at 100% 100%, color-mix(in srgb, var(--mission-accent) 15%, transparent) 0%, transparent 70%);
+}
+
+/* Dragon: same treatment, warm coral/gold den wash instead of Rocket's
+   forest/terracotta — kept for parity even while Dragon is hidden from
+   the mission picker (see AVAILABLE_MISSION_IDS in app.js). */
+:root[data-selected-theme="dragon"] .screen-setup::before {
+  background:
+    radial-gradient(ellipse 55% 40% at 14% 6%, color-mix(in srgb, var(--dragon-surface) 22%, transparent) 0%, transparent 72%),
+    radial-gradient(ellipse 42% 32% at 82% 26%, color-mix(in srgb, var(--dragon-gold) 12%, transparent) 0%, transparent 66%),
+    radial-gradient(ellipse 48% 36% at 100% 100%, color-mix(in srgb, var(--mission-accent) 15%, transparent) 0%, transparent 70%);
+}
+
 .setup-card {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 720px;
+  max-width: clamp(680px, 64vw, 920px);
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
 .brand-header {
-  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: clamp(8px, 1.6vh, 14px);
+}
+
+/* Pure-CSS product mark: a gradient badge with a three-bar "level" glyph —
+   a direct visual echo of the Wake Meter/audio concept the product is
+   built around. No image asset, no dependency. */
+.brand-mark {
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: linear-gradient(155deg, var(--brand-blue) 0%, var(--brand-cyan) 100%);
+  box-shadow: 0 8px 18px -8px color-mix(in srgb, var(--brand-blue) 55%, transparent);
+}
+
+.brand-mark-bar {
+  width: 5px;
+  border-radius: 3px;
+  background: #fff;
+  opacity: 0.95;
+}
+
+.brand-mark-bar-1 { height: 12px; }
+.brand-mark-bar-2 { height: 22px; }
+.brand-mark-bar-3 { height: 16px; }
+
+.brand-copy {
+  text-align: left;
 }
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 4vw, 2.75rem);
-  font-weight: 800;
+  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-weight: 700;
   color: var(--color-text);
   margin: 0;
+  line-height: 1.15;
 }
 
 .brand-tagline {
   color: var(--color-text-muted);
-  font-size: 1rem;
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-weight: 500;
+  line-height: 1.4;
   margin: 4px 0 0 0;
 }
 
 .setup-section-label {
-  font-size: 0.78rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
-  margin: var(--space-3) 0 var(--space-2) 0;
+  margin: clamp(12px, 2vh, 18px) 0 clamp(6px, 1vh, 10px) 0;
+  width: 100%;
+  max-width: 660px;
+}
+
+.setup-section-number {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 14%, transparent);
+  color: var(--mission-accent, var(--color-accent));
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 /* Mission selection is the hero decision on this screen — it gets a
-   heavier, non-muted heading instead of the small uppercase label used
-   for the secondary Duration/Room Setup sections below it. */
+   calmer (not louder) sentence-case heading instead of the small
+   uppercase label used for the secondary Voice Level/Duration/Room Setup
+   sections below it. */
 .setup-section-label-hero {
+  max-width: none;
+  margin-top: 2px;
+}
+
+.setup-section-label-hero .setup-section-number {
+  width: 24px;
+  height: 24px;
+  font-size: 0.8rem;
+  background: var(--mission-accent, var(--color-accent));
+  color: #fff;
+}
+
+.setup-section-label-hero .setup-section-text {
   font-family: var(--font-display);
-  font-size: 1.1rem;
-  font-weight: 800;
-  letter-spacing: 0.01em;
+  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  font-weight: 700;
+  letter-spacing: 0;
   text-transform: none;
   color: var(--color-text);
-  margin-top: 0;
 }
 
 /* ---------- Theme cards ---------- */
 
 .theme-cards {
   display: flex;
-  gap: var(--space-3);
+  gap: 26px;
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
+  margin-bottom: 6px;
 }
 
 .theme-picker[hidden] {
   display: none;
 }
 
+/* Temporary MVP scope: when only one mission is available (see
+   AVAILABLE_MISSION_IDS in app.js), .theme-cards' existing flex +
+   justify-content:center already centers the lone card with no leftover
+   empty-column gap — the shared .theme-option width (below) is already
+   sized to feel prominent without needing a separate larger variant. */
+
+/* Two separate visual elements, not one bordered card: .thumb (the
+   artwork) is the selectable "poster" — background/border/radius/shadow
+   all live there. .theme-option itself is just a plain, transparent
+   click target that stacks the poster above its (unboxed) label; nothing
+   about the button wraps text and artwork in a shared rounded rectangle. */
 .theme-option {
   /* --card-accent is set inline per-card from theme.accentColor (app.js) */
   --card-accent: var(--color-accent);
-  background: var(--color-surface);
-  border: 2px solid rgba(35, 40, 58, 0.08);
-  border-radius: var(--radius-xl);
-  width: 260px;
+  background: none;
+  border: none;
+  width: clamp(240px, 22vw, 320px);
   color: var(--color-text);
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
+  gap: 12px;
   position: relative;
-  overflow: hidden;
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.theme-option:hover {
-  transform: translateY(-4px) scale(1.01);
+/* Hover/selected visuals target the artwork only — the label never gets a
+   border, glow, or background change. */
+.theme-option:hover .thumb {
+  transform: translateY(-2px);
   border-color: var(--card-accent);
 }
 
-.theme-option[aria-selected="true"] {
+/* A single thin accent border plus a soft, low-opacity glow around the
+   artwork — not a hard double ring, not a giant frame. */
+.theme-option[aria-selected="true"] .thumb {
   border-color: var(--card-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--card-accent) 55%, transparent), 0 18px 36px -14px color-mix(in srgb, var(--card-accent) 55%, transparent);
-  transform: translateY(-4px) scale(1.03);
+  box-shadow: 0 10px 26px -14px color-mix(in srgb, var(--card-accent) 45%, transparent), var(--shadow-card);
+  transform: translateY(-2px);
 }
 
-.theme-option[aria-selected="true"] .theme-name {
-  color: var(--card-accent);
-}
-
-/* The mission preview poster fills the full card width — the visual hero
-   of each card — with the name/objective as a light caption strip below
-   it, rather than a small centered icon on an otherwise-empty card. */
+/* The artwork itself: rounded on all four corners, subtle ambient shadow
+   even when unselected, edge-to-edge image fill via object-fit below.
+   This — not .theme-option — is the bordered/clipped "card" element. */
 .theme-option .thumb {
+  position: relative;
   display: block;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  /* Close to square — a poster, not a wide landscape strip — while still
+     keeping the artwork+label group compact enough to leave Voice Level/
+     Mission Time/Start Mission comfortable room below it. */
+  aspect-ratio: 5 / 4;
   overflow: hidden;
   line-height: 0;
+  background: var(--color-surface);
+  border: 1.5px solid rgba(35, 40, 58, 0.08);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.theme-option .thumb svg {
+.theme-option .thumb svg,
+.theme-option .thumb img {
   display: block;
   width: 100%;
   height: 100%;
-  transition: transform 0.2s ease;
+  object-fit: cover;
+  /* Keeps the rocket's full silhouette + flame in frame, with planets
+     still visible at the sides, rather than cropping in tight on it. */
+  object-position: 50% 46%;
+  /* Very subtle softening only — never blurred, never visibly altered. */
+  filter: saturate(0.94) contrast(0.97);
+  transition: transform 0.25s ease;
 }
 
-.theme-option[aria-selected="true"] .thumb svg {
-  transform: scale(1.05);
+.theme-option[aria-selected="true"] .thumb svg,
+.theme-option[aria-selected="true"] .thumb img {
+  transform: scale(1.02);
 }
 
+/* Floats inside the artwork's own top-right corner (.theme-option is
+   position:relative, and .thumb is its first/top child, so this anchors
+   to the poster — never to the label below it). */
 .theme-option[aria-selected="true"]::after {
   content: "Selected ✓";
   position: absolute;
   top: 10px;
   right: 10px;
-  font-size: 0.68rem;
-  font-weight: 800;
+  font-size: 0.66rem;
+  font-weight: 700;
   color: #fff;
   background: var(--card-accent);
   padding: 3px 10px;
   border-radius: 999px;
-  letter-spacing: 0.04em;
-  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.35);
+  letter-spacing: 0.03em;
+  box-shadow: 0 4px 10px -2px rgba(0, 0, 0, 0.3);
 }
 
+/* Label: plain text identifying the mission, no background/border/card —
+   sits directly on the setup screen's own atmosphere. */
 .theme-option .theme-body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 14px var(--space-2) var(--space-2);
+  gap: 3px;
 }
 
 .theme-option .theme-name {
   font-family: var(--font-display);
-  font-size: 1.3rem;
-  font-weight: 800;
+  font-size: clamp(1.25rem, 1.7vw, 1.5rem);
+  font-weight: 600;
+  color: var(--card-accent);
 }
 
 .theme-option .theme-objective {
-  font-size: 0.85rem;
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--color-text-muted);
-  min-height: 2.2em;
+}
+
+/* ---------- Voice Level (compact segmented control, not 4 cards) ---------- */
+
+.voice-level-picker {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  max-width: 680px;
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 6px;
+}
+
+.voice-level-option {
+  flex: 1;
+  padding: clamp(10px, 1.9vh, 14px) 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+  font-weight: 700;
+  line-height: 1;
+  border-radius: 12px;
+  transition: background-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
+}
+
+.voice-level-option:not([aria-selected="true"]):hover {
+  background: rgba(35, 40, 58, 0.06);
+  color: var(--color-text);
+}
+
+.voice-level-option[aria-selected="true"] {
+  background: var(--mission-accent, var(--color-accent));
+  color: #fff;
+  box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 55%, transparent);
+}
+
+/* Rocket: cream rather than pure white on the muted-terracotta fill. */
+:root[data-selected-theme="rocket"] .voice-level-option[aria-selected="true"] {
+  color: var(--rocket-cream);
+}
+
+.voice-level-caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 12px 0 0 0;
+  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-text-muted);
+  min-height: 1.3em;
+}
+
+.voice-level-caption strong {
+  color: var(--color-text);
+  font-weight: 600;
 }
 
 /* ---------- Mission duration ---------- */
 
 .duration-picker {
   display: flex;
-  gap: var(--space-2);
+  gap: 10px;
   flex-wrap: wrap;
   justify-content: center;
+  width: 100%;
+  max-width: 640px;
 }
 
 .duration-option {
-  background: var(--color-surface);
-  border: 2px solid rgba(35, 40, 58, 0.08);
+  background: transparent;
+  border: 1px solid rgba(35, 40, 58, 0.14);
   border-radius: var(--radius-md);
-  padding: 14px 20px;
+  padding: clamp(7px, 1.3vh, 10px) clamp(12px, 1.4vw, 16px);
   color: var(--color-text-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 72px;
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, background 0.15s ease;
+  gap: 1px;
+  min-width: 58px;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
 .duration-option:hover {
-  transform: translateY(-2px);
-  border-color: var(--color-accent);
+  border-color: var(--mission-accent, var(--color-accent));
 }
 
 .duration-value {
-  font-size: 1.5rem;
-  font-weight: 700;
+  font-size: 1.05rem;
+  font-weight: 600;
   line-height: 1;
   color: var(--color-text);
 }
 
 .duration-unit,
 .duration-custom-label {
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
+  font-size: 0.58rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
 }
 
 .duration-custom-label {
-  font-size: 0.9rem;
-  padding: 8px 0;
+  font-size: 0.76rem;
+  padding: 5px 0;
 }
 
 .duration-option[aria-selected="true"] {
   background: var(--mission-accent, var(--color-accent));
   border-color: var(--mission-accent, var(--color-accent));
   color: #fff;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 40%, transparent), 0 12px 28px -10px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 50%, transparent);
-  transform: translateY(-2px) scale(1.05);
 }
 
 .duration-option[aria-selected="true"] .duration-value {
@@ -257,26 +880,25 @@
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  margin-top: var(--space-2);
-  background: var(--color-surface);
+  margin-top: 8px;
+  border: 1px solid rgba(35, 40, 58, 0.14);
   border-radius: var(--radius-lg);
-  padding: 10px var(--space-2);
-  box-shadow: var(--shadow-card);
+  padding: 8px var(--space-2);
 }
 
 .stepper-btn {
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 999px;
-  background: rgba(91, 140, 255, 0.12);
-  color: var(--color-accent-hover);
-  font-size: 1.2rem;
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 12%, transparent);
+  color: var(--mission-accent, var(--color-accent-hover));
+  font-size: 1.1rem;
   font-weight: 700;
   line-height: 1;
 }
 
 .stepper-btn:hover {
-  background: rgba(91, 140, 255, 0.22);
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 22%, transparent);
 }
 
 .custom-duration-value {
@@ -290,23 +912,46 @@
 
 .room-setup-details {
   width: 100%;
-  max-width: 560px;
+  max-width: 660px;
+  margin-top: 4px;
 }
 
+/* Collapsed state reads as a single utility/settings row — not a card —
+   with its own subtle surface so it's findable at a glance without
+   competing with the mission cards or Voice Level control above it. */
 .room-setup-summary {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   list-style: none;
   cursor: pointer;
-  padding: 10px 16px;
+  padding: clamp(8px, 1.4vh, 11px) 16px;
   border-radius: var(--radius-lg);
-  background: var(--color-surface-tint, var(--color-surface));
-  border: 1px solid rgba(35, 40, 58, 0.08);
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 4%, #f8f3ea);
+  border: 1px solid rgba(35, 40, 58, 0.07);
+  transition: background-color 0.15s ease;
+}
+
+.room-setup-summary:hover {
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 7%, #f8f3ea);
 }
 
 .room-setup-summary::-webkit-details-marker {
   display: none;
+}
+
+.room-setup-summary-number {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 14%, transparent);
+  color: var(--mission-accent, var(--color-accent));
+  font-size: 0.7rem;
+  font-weight: 800;
 }
 
 .room-setup-summary-chevron {
@@ -325,17 +970,22 @@
 
 .room-setup-summary-text {
   display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  text-align: left;
+}
+
+.room-setup-summary-toprow {
+  display: flex;
   align-items: baseline;
   gap: 8px;
-  flex: 1;
 }
 
 .room-setup-summary-label {
   color: var(--color-text);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .room-setup-summary-status {
@@ -346,6 +996,11 @@
 
 .room-setup-summary-status[data-ready="true"] {
   color: var(--color-safe);
+}
+
+.room-setup-summary-subtext {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
 }
 
 .room-setup {
@@ -365,7 +1020,6 @@
   padding: var(--space-2) var(--space-3);
   flex: 1 1 260px;
   min-width: 240px;
-  border-top: 4px solid var(--color-secondary);
 }
 
 .calibration-title {
@@ -395,7 +1049,7 @@
   font-size: 1.6rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  color: var(--color-accent-hover);
+  color: var(--mission-accent, var(--color-accent-hover));
 }
 
 .sensitivity-header {
@@ -412,7 +1066,7 @@
 .sensitivity-value {
   font-weight: 800;
   font-size: 1.1rem;
-  color: var(--color-accent);
+  color: var(--mission-accent, var(--color-accent));
   font-variant-numeric: tabular-nums;
 }
 
@@ -475,39 +1129,88 @@
   font-size: 0.82rem;
 }
 
-/* Start Mission is the hero CTA: bigger, pill-shaped, tinted to the
+/* Mission Sounds: one compact row, not a settings card — a smaller
+   two-option variant of the same segmented-control language Voice Level
+   already uses, so it reads as part of the same soft control family. */
+.mission-sounds-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  max-width: 660px;
+  margin-top: 10px;
+  padding: 2px 4px;
+}
+
+.mission-sounds-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.mission-sounds-toggle {
+  display: flex;
+  gap: 4px;
+  background: color-mix(in srgb, var(--color-text) 4%, transparent);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.mission-sounds-option {
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 5px 16px;
+  border-radius: 999px;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.mission-sounds-option:hover {
+  color: var(--color-text);
+}
+
+.mission-sounds-option[aria-selected="true"] {
+  background: var(--mission-accent, var(--color-accent));
+  color: #fff;
+}
+
+/* Start Mission is the hero CTA: a comfortable pill, tinted to the
    selected mission's accent, with a play-glyph rather than a plain
-   form-submit look. */
+   form-submit look — a soft shadow only, no glow ring, so it reads as
+   calm/confident rather than an arcade "press start" button. */
 #start-btn {
-  margin-top: var(--space-3);
+  margin-top: clamp(10px, 1.6vh, 14px);
   display: inline-flex;
   align-items: center;
-  gap: 12px;
-  padding: 18px 48px;
-  font-size: 1.2rem;
-  font-weight: 800;
-  letter-spacing: 0.02em;
+  justify-content: center;
+  gap: 10px;
+  width: clamp(280px, 26vw, 360px);
+  min-height: 50px;
+  padding: 0 clamp(24px, 3vw, 36px);
+  font-size: clamp(1rem, 1.15vw, 1.08rem);
+  font-weight: 700;
+  letter-spacing: 0.01em;
   border-radius: 999px;
   background: var(--mission-accent, var(--color-accent));
-  box-shadow: 0 16px 34px -12px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 60%, transparent),
-    0 4px 10px -4px rgba(0, 0, 0, 0.25);
+  box-shadow: 0 8px 18px -10px rgba(20, 20, 20, 0.35);
 }
 
 #start-btn::before {
   content: "";
   width: 0;
   height: 0;
-  border-top: 8px solid transparent;
-  border-bottom: 8px solid transparent;
-  border-left: 13px solid currentColor;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
   flex-shrink: 0;
 }
 
 #start-btn:hover {
-  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 85%, black);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px -14px color-mix(in srgb, var(--mission-accent, var(--color-accent)) 65%, transparent),
-    0 6px 14px -6px rgba(0, 0, 0, 0.3);
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 88%, black);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px -10px rgba(20, 20, 20, 0.4);
 }
 
 #start-btn:active {
@@ -541,7 +1244,20 @@
   background: #050810;
 }
 
-.stage svg {
+/* Rocket-only bottom safe-area: reserves just enough room for the (now
+   deliberately low-profile) Launch Energy instrument so the Pixi scene
+   composes itself inside the remaining space rather than the platform
+   sitting underneath the panel — kept small so the Rocket stays the
+   dominant element (HUD should read as ~10-15% of the scene, not ~25%+).
+   Set on #screen-session (data-theme) BEFORE mount() runs in app.js's
+   render(), so the renderer's initial size read already sees this box —
+   rocket_renderer.js itself is untouched. Dragon's .stage is unaffected. */
+.screen-session[data-theme="rocket"] .stage {
+  bottom: clamp(112px, 14vh, 150px);
+}
+
+.stage svg,
+.stage canvas {
   display: block;
   width: 100%;
   height: 100%;
@@ -556,8 +1272,14 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: clamp(12px, 2vh, 18px) var(--space-3);
   background: linear-gradient(to bottom, rgba(5, 8, 16, 0.75), rgba(5, 8, 16, 0));
+}
+
+/* Overlay-only vignette tint (never touches the Pixi canvas beneath it) so
+   the top/bottom scrims read as forest-green rather than neutral navy. */
+.screen-session[data-theme="rocket"] .hud-top {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--rocket-deep) 62%, transparent), transparent);
 }
 
 .hud-objective {
@@ -571,18 +1293,93 @@
 .hud-mission-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: clamp(1rem, 2.4vw, 1.35rem);
-  font-weight: 800;
-  letter-spacing: 0.01em;
+  /* Balanced classroom-readable scale — confident, not loud. */
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.2;
   color: var(--mission-accent, var(--color-text));
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 }
 
 .hud-mission-hint {
-  margin: 2px 0 0 0;
-  font-size: 0.8rem;
+  margin: 4px 0 0 0;
+  font-size: clamp(0.9rem, 1.15vw, 1.1rem);
+  font-weight: 500;
+  line-height: 1.4;
   color: var(--color-text-muted);
-  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.6);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.5);
+}
+
+/* Tier 3: Voice Level + Class Streak share one row so neither reads as
+   more important than the timer/objective/Launch Energy above it. */
+.hud-status-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Compact reminder of the selected Voice Level — same selected-chip
+   language as the setup screen (mission-accent fill), theme-agnostic since
+   it only reads --mission-accent, never a Rocket/Dragon-specific token. */
+.hud-voice-level {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 32%, rgba(5, 8, 16, 0.6));
+  color: #fff;
+  font-size: clamp(0.8rem, 0.9vw, 0.95rem);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Class Streak: an outline chip (not a filled one) so it stays visibly
+   Tier 3 — present and readable, but never louder than the filled Voice
+   Level chip beside it, let alone the timer or Rocket scene. Empty when
+   there's no active mission (hidden via :empty, no extra JS bookkeeping). */
+.hud-streak-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 30%, transparent);
+  color: var(--color-text-muted);
+  font-size: clamp(0.75rem, 0.85vw, 0.88rem);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.hud-streak-chip:empty {
+  display: none;
+}
+
+.screen-session[data-theme="rocket"] .hud-streak-chip {
+  border-color: color-mix(in srgb, var(--rocket-cream) 30%, transparent);
+  color: color-mix(in srgb, var(--rocket-cream) 80%, transparent);
+}
+
+/* Small, unmistakable — appears only while genuinely paused, right next
+   to the timer it modifies, never as a separate modal/overlay. */
+.hud-paused-badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 16%, transparent);
+  color: var(--color-text);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.screen-session[data-theme="rocket"] .hud-paused-badge {
+  background: color-mix(in srgb, var(--rocket-cream) 18%, transparent);
+  color: var(--rocket-cream);
 }
 
 /* Countdown and Pause/End are siblings in ONE flex column, right-aligned
@@ -596,47 +1393,226 @@
   gap: 6px;
 }
 
+.hud-countdown-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Pure-CSS clock glyph (circle + two hands) — no icon font/SVG dependency. */
+.hud-clock-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--color-text-muted);
+  opacity: 0.8;
+}
+
+.hud-clock-icon::before,
+.hud-clock-icon::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  background: var(--color-text-muted);
+  transform-origin: bottom center;
+}
+
+.hud-clock-icon::before {
+  width: 2px;
+  height: 5.5px;
+  margin-left: -1px;
+}
+
+.hud-clock-icon::after {
+  width: 2px;
+  height: 4px;
+  margin-left: -1px;
+  transform: rotate(90deg);
+}
+
 .hud-countdown {
-  font-size: clamp(1.8rem, 5vw, 2.75rem);
+  /* Prominent but not dominant: clean and elegant rather than a
+     scoreboard-scale numeral. */
+  font-size: clamp(2.6rem, 4.4vw, 4.2rem);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--color-text);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
-  letter-spacing: 0.02em;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+  letter-spacing: 0;
   line-height: 1;
 }
 
+.screen-session[data-theme="rocket"] .hud-top-right {
+  background: color-mix(in srgb, var(--rocket-deep) 40%, transparent);
+  border-radius: 14px;
+  padding: 8px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.screen-session[data-theme="rocket"] .hud-clock-icon {
+  border-color: var(--rocket-cream);
+  opacity: 0.8;
+}
+
+.screen-session[data-theme="rocket"] .hud-clock-icon::before,
+.screen-session[data-theme="rocket"] .hud-clock-icon::after {
+  background: var(--rocket-cream);
+}
+
+.screen-session[data-theme="rocket"] .hud-countdown {
+  color: var(--rocket-cream);
+}
+
+/* Just a layout wrapper now — each button carries its own glass surface
+   (below) rather than the pair sitting inside one shared opaque card. */
 .session-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.35);
-  padding: 6px 10px;
-  border-radius: var(--radius-md);
-  opacity: 0.55;
-  transition: opacity 0.2s ease;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
-.session-controls:hover {
-  opacity: 1;
-}
-
+/* Translucent/glass, not an opaque dashboard button — a soft blurred
+   surface so the pair reads clearly against any scene brightness without
+   becoming a heavy HUD tile. */
 .control-btn {
-  background: rgba(255, 255, 255, 0.1);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--color-text);
-  font-size: 0.75rem;
+  font-size: 0.88rem;
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
+  /* Classroom touch target (~44-48px tall). */
+  padding: 11px 18px;
+  min-height: 44px;
+  border-radius: 12px;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .control-btn:hover {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Pause is the safer/common action — a touch more visible than End. */
+.control-btn-pause {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* Two static icon glyphs (pause bars / play triangle); render() toggles
+   which one is hidden based on session status — no icon library, no glyph
+   swap that would need to be re-styled per state. */
+.control-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+/* The class above (higher specificity than the UA [hidden] rule) would
+   otherwise defeat the hidden attribute render()/app.js toggles between
+   the two icon glyphs — restore it explicitly. */
+.control-btn-icon[hidden] {
+  display: none;
+}
+
+.control-btn-icon-pause::before,
+.control-btn-icon-pause::after {
+  content: "";
+  width: 3.5px;
+  height: 14px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.control-btn-icon-pause::before {
+  margin-right: 3.5px;
+}
+
+.control-btn-icon-play {
+  width: 0;
+  height: 0;
+  border-top: 7px solid transparent;
+  border-bottom: 7px solid transparent;
+  border-left: 11px solid currentColor;
+}
+
+/* End: same translucent construction, subtle warm terracotta tint —
+   never bright red — so it still reads as "the other button", not an
+   alarm. */
+#end-btn {
+  background: rgba(190, 80, 60, 0.14);
+  border-color: rgba(190, 80, 60, 0.22);
+  color: #ffe4da;
+}
+
+#end-btn:hover {
+  background: rgba(190, 80, 60, 0.22);
+}
+
 .control-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Sound: same glass family, deliberately quieter — smaller and slightly
+   less opaque than Pause/End since it's the least-consequential of the
+   three (utility tier, not a mission-flow action). Dims further when off
+   so the two states are distinguishable without reading the label. */
+.control-btn-sound {
+  padding: 9px 14px;
+  min-height: 44px;
+  font-size: 0.8rem;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.14);
+  opacity: 0.85;
+}
+
+.control-btn-sound:hover {
+  background: rgba(255, 255, 255, 0.16);
+  opacity: 1;
+}
+
+.control-btn-sound[aria-pressed="false"] {
+  opacity: 0.55;
+}
+
+/* Rocket: same glass construction, tuned to the palette — cream text,
+   a warm-cream-tinted Pause surface, terracotta/danger-tinted End. */
+.screen-session[data-theme="rocket"] .control-btn {
+  color: var(--rocket-cream);
+}
+
+.screen-session[data-theme="rocket"] .control-btn-sound {
+  background: color-mix(in srgb, var(--rocket-cream) 9%, transparent);
+  border-color: color-mix(in srgb, var(--rocket-cream) 16%, transparent);
+}
+
+.screen-session[data-theme="rocket"] .control-btn-pause {
+  background: color-mix(in srgb, var(--rocket-cream) 16%, transparent);
+  border-color: color-mix(in srgb, var(--rocket-cream) 24%, transparent);
+}
+
+.screen-session[data-theme="rocket"] .control-btn-pause:hover {
+  background: color-mix(in srgb, var(--rocket-cream) 24%, transparent);
+}
+
+.screen-session[data-theme="rocket"] #end-btn {
+  background: color-mix(in srgb, var(--rocket-danger) 20%, transparent);
+  border-color: color-mix(in srgb, var(--rocket-danger) 32%, transparent);
+}
+
+.screen-session[data-theme="rocket"] #end-btn:hover {
+  background: color-mix(in srgb, var(--rocket-danger) 32%, transparent);
 }
 
 .hud-bottom {
@@ -647,6 +1623,11 @@
   padding: var(--space-3);
   background: linear-gradient(to top, rgba(5, 8, 16, 0.8), rgba(5, 8, 16, 0));
   pointer-events: none;
+}
+
+.screen-session[data-theme="rocket"] .hud-bottom {
+  bottom: clamp(10px, 1.6vh, 18px);
+  background: linear-gradient(to top, color-mix(in srgb, var(--rocket-deep) 55%, transparent), transparent);
 }
 
 .meter-header {
@@ -726,9 +1707,13 @@
   height: 100%;
   width: 100%;
   border-radius: 999px;
+  /* Explicit background-color (not just the shorthand) so there is always
+     a solid, valid fallback under the gradient — background-image alone
+     can never leave the fill fully transparent. */
+  background-color: var(--color-warning);
   /* Cool -> warm -> urgent progression matching the Safe/Building/Warning/
      Final Warning/Launch status bands, not just an accent gradient. */
-  background: linear-gradient(90deg,
+  background-image: linear-gradient(90deg,
     var(--color-accent) 0%,
     var(--color-secondary) 35%,
     var(--color-warning) 65%,
@@ -739,7 +1724,12 @@
      old width-based fill while avoiding a layout pass on every update. */
   transform-origin: left center;
   transform: scaleX(0);
-  transition: transform 0.4s ease;
+  /* Visual smoothing only — the underlying wakeMeter value/fail check in
+     session.js is untouched and unaffected by how the fill paints.
+     background is intentionally NOT transitioned: gradient-to-gradient
+     values aren't reliably interpolable, so band-color changes swap
+     instantly rather than risk an animated non-interpolable transition. */
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .meter-scale {
@@ -753,6 +1743,44 @@
   color: var(--color-text-muted);
 }
 
+/* Mission Rating: subordinate to the meter itself (Tier 2, but below the
+   percentage/track) — a positive objective ("protect these stars")
+   alongside the meter, not a second competing instrument. */
+.mission-rating {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.mission-rating-stars {
+  display: inline-flex;
+  gap: 2px;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+/* Losing a star fades/dims it rather than swapping to a hollow glyph —
+   reads as "degrading," stays soft, never bounces. */
+.rating-star {
+  color: var(--color-warning);
+  transition: color 0.4s ease, opacity 0.4s ease;
+}
+
+.rating-star.is-dim {
+  color: var(--color-text-muted);
+  opacity: 0.35;
+}
+
+.mission-rating-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
 /* ==================== Rocket-specific HUD: Launch Energy instrument ====
    Everything below is scoped under [data-theme="rocket"] (set on
    #screen-session by app.js only while the Rocket theme is mounted), so
@@ -761,30 +1789,28 @@
    #wake-meter-fill nodes app.js already updates, restyled per mission and
    driven by the data-level it already mirrors onto #hud-bottom. */
 
+/* Rocket keeps the same plain warm-accent vertical line every theme uses
+   (.hud-objective's default border-left) — it's already --mission-accent,
+   which is now Rocket's burnt-terracotta, matching the reference's simple
+   accent line rather than a corner-bracket HUD motif. */
+
+/* Top-left/top-right clusters get a restrained translucent forest-green
+   surface for Rocket specifically — Dragon keeps its bare text-on-scene
+   look untouched. Frames the info without ever becoming an opaque card. */
 .screen-session[data-theme="rocket"] .hud-objective {
-  border-left: none;
-  padding-left: 14px;
-  position: relative;
+  background: color-mix(in srgb, var(--rocket-deep) 40%, transparent);
+  border-radius: 0 14px 14px 0;
+  padding: 8px 16px 8px 14px;
+  backdrop-filter: blur(4px);
 }
 
-.screen-session[data-theme="rocket"] .hud-objective::before,
-.screen-session[data-theme="rocket"] .hud-objective::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  border-left: 2px solid var(--mission-accent, var(--color-accent));
+.screen-session[data-theme="rocket"] .hud-mission-hint {
+  color: color-mix(in srgb, var(--rocket-cream) 72%, transparent);
 }
 
-.screen-session[data-theme="rocket"] .hud-objective::before {
-  top: -2px;
-  border-top: 2px solid var(--mission-accent, var(--color-accent));
-}
-
-.screen-session[data-theme="rocket"] .hud-objective::after {
-  bottom: -2px;
-  border-bottom: 2px solid var(--mission-accent, var(--color-accent));
+.screen-session[data-theme="rocket"] .hud-voice-level {
+  background: color-mix(in srgb, var(--rocket-surface-soft) 80%, transparent);
+  color: var(--rocket-cream);
 }
 
 .screen-session[data-theme="rocket"] .meter-header {
@@ -792,25 +1818,83 @@
 }
 
 .screen-session[data-theme="rocket"] .meter-label {
-  color: var(--mission-accent, var(--color-text-muted));
+  color: var(--rocket-gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
 }
 
 .screen-session[data-theme="rocket"] .meter-percent {
   font-variant-numeric: tabular-nums;
-  background: rgba(8, 14, 28, 0.55);
-  padding: 2px 8px;
-  border-radius: 4px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--rocket-cream);
+  background: color-mix(in srgb, var(--rocket-deep) 45%, transparent);
+  padding: 2px 10px;
+  border-radius: 6px;
+}
+
+/* Base .energy-panel is a no-op wrapper for every theme except Rocket —
+   Dragon's Wake Level meter renders exactly as before, unaffected by the
+   new nesting level in index.html. */
+.energy-panel {
+  width: 100%;
+}
+
+/* Rocket's Launch Energy: a low-profile mission-control panel — softer
+   and smaller than a "widget pasted over the scene," integrated via a
+   light translucent surface rather than a heavy card. */
+.screen-session[data-theme="rocket"] .energy-panel {
+  max-width: clamp(420px, 48vw, 620px);
+  margin: 0 auto;
+  padding: 12px 22px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--rocket-deep) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--rocket-cream) 10%, transparent);
+  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.5);
+}
+
+.screen-session[data-theme="rocket"] .energy-panel .meter-header,
+.screen-session[data-theme="rocket"] .energy-panel .wake-meter-track,
+.screen-session[data-theme="rocket"] .energy-panel .meter-scale {
+  max-width: none;
+  width: 100%;
+}
+
+.screen-session[data-theme="rocket"] .meter-scale {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  color: color-mix(in srgb, var(--rocket-cream) 60%, transparent);
+  margin-top: 8px;
+}
+
+.screen-session[data-theme="rocket"] .mission-rating {
+  margin-top: 12px;
+}
+
+.screen-session[data-theme="rocket"] .rating-star {
+  color: var(--rocket-gold);
+}
+
+.screen-session[data-theme="rocket"] .rating-star.is-dim {
+  color: color-mix(in srgb, var(--rocket-cream) 22%, transparent);
+  opacity: 1;
+}
+
+.screen-session[data-theme="rocket"] .mission-rating-label {
+  color: color-mix(in srgb, var(--rocket-cream) 70%, transparent);
 }
 
 /* Instrument housing: a recessed panel instead of a plain rounded bar
    track, with control-panel tick marks at 25/50/75 drawn via a hard-stop
-   gradient overlay — no extra DOM for the ticks. */
+   gradient overlay — no extra DOM for the ticks. Slightly taller than the
+   base meter, not an oversized instrument. */
 .screen-session[data-theme="rocket"] .wake-meter-track {
   position: relative;
-  height: 22px;
-  border-radius: 6px;
-  background: rgba(8, 14, 28, 0.65);
+  height: 26px;
+  border-radius: 9px;
+  background: rgba(8, 14, 12, 0.55);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 2px 6px rgba(0, 0, 0, 0.5);
   transition: box-shadow 0.3s ease;
 }
@@ -822,48 +1906,56 @@
   z-index: 1;
   pointer-events: none;
   background: linear-gradient(90deg,
-    transparent 24.6%, rgba(255, 255, 255, 0.4) 25%, transparent 25.4%,
-    transparent 49.6%, rgba(255, 255, 255, 0.4) 50%, transparent 50.4%,
-    transparent 74.6%, rgba(255, 255, 255, 0.4) 75%, transparent 75.4%);
+    transparent 24.6%, rgba(255, 255, 255, 0.35) 25%, transparent 25.4%,
+    transparent 49.6%, rgba(255, 255, 255, 0.35) 50%, transparent 50.4%,
+    transparent 74.6%, rgba(255, 255, 255, 0.35) 75%, transparent 75.4%);
 }
 
 /* Fill recolors per band instead of always painting the full rainbow —
-   reads as "systems nominal -> energy building -> danger", matching the
-   Stable/Building/Warning/Danger language in the mission brief. */
+   reads as "systems nominal -> energy building -> danger", now using the
+   reference's muted-teal / gold / burnt-orange / danger-red progression
+   instead of the earlier electric-cyan family. */
 .screen-session[data-theme="rocket"] #wake-meter-fill {
-  border-radius: 4px;
-  background: linear-gradient(90deg, #2dd4c8, #22b8cf);
+  border-radius: 6px;
+  background-color: #6fa08c;
+  background-image: linear-gradient(90deg, #4f7d6c, #6fa08c);
   box-shadow: none;
-  transition: transform 0.4s ease, background 0.3s ease;
+  /* background is deliberately excluded from the transition (see the base
+     .wake-meter-fill rule above) — band-color changes swap instantly. */
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="building"] #wake-meter-fill {
-  background: linear-gradient(90deg, #22b8cf, #ffb347);
+  background-color: var(--rocket-gold);
+  background-image: linear-gradient(90deg, #6fa08c, var(--rocket-gold));
 }
 
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="warning"] #wake-meter-fill {
-  background: linear-gradient(90deg, #ffb347, #ff8c5a);
+  background-color: var(--rocket-orange);
+  background-image: linear-gradient(90deg, var(--rocket-gold), var(--rocket-orange));
 }
 
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="final"] #wake-meter-fill {
-  background: linear-gradient(90deg, #ff8c5a, #ff6b6b);
+  background-color: var(--rocket-danger);
+  background-image: linear-gradient(90deg, var(--rocket-orange), var(--rocket-danger));
 }
 
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="launch"] #wake-meter-fill {
-  background: #ff6b6b;
+  background-color: var(--rocket-danger);
+  background-image: none;
 }
 
 /* Restrained glow that escalates with the band — housing only, so it
    reads as "instrument panel lighting up," not a chaotic bar effect. */
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="warning"] .wake-meter-track {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 2px 6px rgba(0, 0, 0, 0.5),
-    0 0 14px color-mix(in srgb, var(--color-warning) 55%, transparent);
+    0 0 14px color-mix(in srgb, var(--rocket-gold) 55%, transparent);
 }
 
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="final"] .wake-meter-track,
 .screen-session[data-theme="rocket"] #hud-bottom[data-level="launch"] .wake-meter-track {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15), inset 0 2px 6px rgba(0, 0, 0, 0.5),
-    0 0 20px color-mix(in srgb, var(--color-danger) 60%, transparent);
+    0 0 20px color-mix(in srgb, var(--rocket-danger) 60%, transparent);
 }
 
 /* Small pulsing warning dot beside the label — only once the class is
@@ -879,8 +1971,8 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--color-danger);
-  box-shadow: 0 0 8px var(--color-danger);
+  background: var(--rocket-danger);
+  box-shadow: 0 0 8px var(--rocket-danger);
   animation: launch-energy-warn 1s ease-in-out infinite;
 }
 
@@ -896,20 +1988,393 @@
   }
 }
 
-/* ==================== Result screen (win/fail, light shell) ==================== */
+/* ==================== Dragon-specific HUD + live scene =================
+   Everything below is scoped under [data-theme="dragon"] (set on
+   #screen-session by app.js only while the Dragon theme is mounted), so
+   none of it touches Rocket's rendering. Same shared HUD DOM Rocket uses
+   (hud-bottom, the meter elements, wake-meter-fill, etc.) — themed, not
+   rebuilt, per the "theme the existing HUD rather than rebuilding it" direction. The
+   live character scene itself (.dragon-stage and everything inside it) is
+   built by dragon_renderer.js at mount() time into #stage. */
+
+.screen-session[data-theme="dragon"] .stage {
+  bottom: clamp(112px, 14vh, 150px);
+}
+
+.screen-session[data-theme="dragon"] .hud-top {
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--dragon-deep) 62%, transparent), transparent);
+}
+
+.screen-session[data-theme="dragon"] .hud-objective {
+  background: color-mix(in srgb, var(--dragon-deep) 40%, transparent);
+  border-radius: 0 14px 14px 0;
+  padding: 8px 16px 8px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.screen-session[data-theme="dragon"] .hud-mission-hint {
+  color: color-mix(in srgb, var(--dragon-cream) 72%, transparent);
+}
+
+.screen-session[data-theme="dragon"] .hud-voice-level {
+  background: color-mix(in srgb, var(--dragon-surface-soft) 80%, transparent);
+  color: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .hud-streak-chip {
+  border-color: color-mix(in srgb, var(--dragon-cream) 30%, transparent);
+  color: color-mix(in srgb, var(--dragon-cream) 80%, transparent);
+}
+
+.screen-session[data-theme="dragon"] .hud-paused-badge {
+  background: color-mix(in srgb, var(--dragon-cream) 18%, transparent);
+  color: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .hud-top-right {
+  background: color-mix(in srgb, var(--dragon-deep) 40%, transparent);
+  border-radius: 14px;
+  padding: 8px 14px;
+  backdrop-filter: blur(4px);
+}
+
+.screen-session[data-theme="dragon"] .hud-clock-icon {
+  border-color: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .hud-clock-icon::before,
+.screen-session[data-theme="dragon"] .hud-clock-icon::after {
+  background: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .hud-countdown {
+  color: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .control-btn {
+  color: var(--dragon-cream);
+}
+
+.screen-session[data-theme="dragon"] .control-btn-sound {
+  background: color-mix(in srgb, var(--dragon-cream) 9%, transparent);
+  border-color: color-mix(in srgb, var(--dragon-cream) 16%, transparent);
+}
+
+.screen-session[data-theme="dragon"] .control-btn-pause {
+  background: color-mix(in srgb, var(--dragon-cream) 16%, transparent);
+  border-color: color-mix(in srgb, var(--dragon-cream) 24%, transparent);
+}
+
+.screen-session[data-theme="dragon"] .control-btn-pause:hover {
+  background: color-mix(in srgb, var(--dragon-cream) 24%, transparent);
+}
+
+.screen-session[data-theme="dragon"] #end-btn {
+  background: color-mix(in srgb, var(--dragon-amber) 20%, transparent);
+  border-color: color-mix(in srgb, var(--dragon-amber) 32%, transparent);
+}
+
+.screen-session[data-theme="dragon"] #end-btn:hover {
+  background: color-mix(in srgb, var(--dragon-amber) 32%, transparent);
+}
+
+.screen-session[data-theme="dragon"] .hud-bottom {
+  bottom: clamp(10px, 1.6vh, 18px);
+  background: linear-gradient(to top, color-mix(in srgb, var(--dragon-deep) 55%, transparent), transparent);
+}
+
+.screen-session[data-theme="dragon"] .energy-panel {
+  max-width: clamp(420px, 48vw, 620px);
+  margin: 0 auto;
+  padding: 12px 22px 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--dragon-deep) 62%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dragon-cream) 10%, transparent);
+  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.5);
+}
+
+.screen-session[data-theme="dragon"] .energy-panel .meter-header,
+.screen-session[data-theme="dragon"] .energy-panel .wake-meter-track,
+.screen-session[data-theme="dragon"] .energy-panel .meter-scale {
+  max-width: none;
+  width: 100%;
+}
+
+.screen-session[data-theme="dragon"] .meter-label {
+  color: var(--dragon-gold);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+}
+
+.screen-session[data-theme="dragon"] .meter-percent {
+  font-variant-numeric: tabular-nums;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--dragon-cream);
+  background: color-mix(in srgb, var(--dragon-deep) 45%, transparent);
+  padding: 2px 10px;
+  border-radius: 6px;
+}
+
+.screen-session[data-theme="dragon"] .meter-scale {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  color: color-mix(in srgb, var(--dragon-cream) 60%, transparent);
+  margin-top: 8px;
+}
+
+.screen-session[data-theme="dragon"] .wake-meter-track {
+  height: 26px;
+  border-radius: 9px;
+  background: rgba(10, 6, 4, 0.55);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12), inset 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+.screen-session[data-theme="dragon"] #wake-meter-fill {
+  border-radius: 6px;
+  background-color: var(--dragon-coral);
+  background-image: linear-gradient(90deg, var(--dragon-gold), var(--dragon-coral));
+  box-shadow: none;
+  transition: transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.screen-session[data-theme="dragon"] #hud-bottom[data-level="warning"] #wake-meter-fill,
+.screen-session[data-theme="dragon"] #hud-bottom[data-level="final"] #wake-meter-fill,
+.screen-session[data-theme="dragon"] #hud-bottom[data-level="launch"] #wake-meter-fill {
+  background-color: var(--dragon-amber);
+  background-image: linear-gradient(90deg, var(--dragon-coral), var(--dragon-amber));
+}
+
+.screen-session[data-theme="dragon"] .mission-rating {
+  margin-top: 12px;
+}
+
+.screen-session[data-theme="dragon"] .rating-star {
+  color: var(--dragon-gold);
+}
+
+.screen-session[data-theme="dragon"] .rating-star.is-dim {
+  color: color-mix(in srgb, var(--dragon-cream) 22%, transparent);
+  opacity: 1;
+}
+
+.screen-session[data-theme="dragon"] .mission-rating-label {
+  color: color-mix(in srgb, var(--dragon-cream) 70%, transparent);
+}
+
+/* ---------- Live Dragon scene (built by dragon_renderer.js) ---------- */
+
+.dragon-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* Quiet nighttime cave/den — layered gradients only, no illustration
+   detailed enough to compete with the character. */
+.dragon-environment {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.dragon-env-cave {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 90% 60% at 50% 115%, color-mix(in srgb, var(--dragon-surface) 55%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, #0c0908 0%, #17110d 45%, #0c0806 100%);
+}
+
+/* Subtle cave-mouth silhouettes at the edges — soft, dark, out of focus. */
+.dragon-env-cave::before,
+.dragon-env-cave::after {
+  content: "";
+  position: absolute;
+  bottom: -6%;
+  width: 46%;
+  height: 70%;
+  background: radial-gradient(ellipse 100% 100% at 50% 100%, rgba(0, 0, 0, 0.65) 0%, transparent 72%);
+}
+
+.dragon-env-cave::before { left: -10%; }
+.dragon-env-cave::after { right: -10%; }
+
+/* Very restrained warm ambient light around the dragon itself. */
+.dragon-env-glow {
+  position: absolute;
+  left: 50%;
+  top: 56%;
+  width: 62%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse 60% 55% at 50% 50%, color-mix(in srgb, var(--dragon-coral) 16%, transparent) 0%, transparent 75%);
+}
+
+.dragon-ground-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 6%;
+  width: 46%;
+  height: 8%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, rgba(0, 0, 0, 0.55) 0%, transparent 75%);
+  filter: blur(2px);
+}
+
+/* The shared coordinate system every .dragon-pose-* anchor and runtime
+   effect layer positions itself against (see dragon_renderer.js header).
+   aspect-ratio + max-width/max-height:100% is a "contain"-equivalent for
+   a plain div (object-fit only applies to replaced elements) — locks the
+   box to the PNGs' own 1408:768 ratio so it never crops wings/horns/tail
+   regardless of the stage's own aspect ratio, and leaves comfortable
+   margin (94%/90%) rather than touching the safe-area edges. */
+.dragon-character {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  z-index: 1;
+  width: 94%;
+  max-width: 94%;
+  max-height: 90%;
+  aspect-ratio: 1408 / 768;
+}
+
+/* Portrait/tablet (e.g. 768x1024): the character's own wide aspect ratio
+   (1408:768) makes it width-bound on a narrow viewport regardless of how
+   much vertical room is available, so the only real lever is letting it
+   use nearly the full width instead of leaving a wide 6% margin either
+   side. max-height is raised too (harmless — width stays the binding
+   constraint at this aspect ratio) purely so the allowance stays
+   consistent with the wider max-width. Landscape/desktop sizes (1440x900,
+   1366x768) don't match this query and are unaffected. */
+@media (orientation: portrait) and (max-width: 900px) {
+  .dragon-character {
+    width: 99%;
+    max-width: 99%;
+    max-height: 96%;
+  }
+}
+
+.dragon-pose {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+
+.dragon-pose-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  will-change: transform;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* Runtime-only warm glow (mouth/chest) — opacity driven entirely by
+   dragon_renderer.js; never baked into a PNG. */
+.dragon-glow {
+  position: absolute;
+  width: 16%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--dragon-amber) 85%, transparent) 0%, transparent 72%);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+}
+
+.dragon-smoke-pool,
+.dragon-fire-pool {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Nostril smoke: two small pooled puffs, faded in only near the final
+   warning threshold (see dragon_renderer.js) — reuses the same restrained
+   drift language as the result screen's smoke-puff motif. */
+.dragon-smoke-puff {
+  position: absolute;
+  left: 39%;
+  top: 22%;
+  width: 5%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(210, 200, 190, 0.5), rgba(210, 200, 190, 0));
+  filter: blur(1.5px);
+  opacity: 0;
+  animation: dragon-smoke-drift 3.4s ease-in-out infinite alternate;
+}
+
+.dragon-smoke-puff-2 {
+  left: 41.5%;
+  top: 20%;
+  width: 3.5%;
+  animation-duration: 4.1s;
+  animation-delay: -1.2s;
+}
+
+@keyframes dragon-smoke-drift {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(-6%, -30%) scale(1.4); }
+}
+
+/* Cartoon fire blobs (fail cinematic only) — simple radial-gradient
+   spans, animated once via GSAP in triggerFailEvent(). Stylized/bright,
+   not a particle system. */
+.dragon-fire-blob {
+  position: absolute;
+  width: 11%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) scale(0.2);
+  border-radius: 50% 50% 45% 45%;
+  background: radial-gradient(circle at 50% 40%, #fff3c4 0%, var(--dragon-amber) 45%, var(--dragon-coral) 80%, transparent 100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Full-stage impact flash. */
+.dragon-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--dragon-amber) 70%, white);
+  pointer-events: none;
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dragon-smoke-puff { animation: none; }
+}
+
+/* ==================== Result screen (win/fail, dark mission world) ========
+   Deliberately NOT `.shell` — the result is still part of the mission
+   experience, not a return to the light product shell, so it inherits
+   :root's dark tokens and gets a mission-accented cinematic backdrop
+   instead of a light gradient + white card-on-a-page. */
 
 .screen-result {
   position: relative;
   overflow: hidden;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 28%, color-mix(in srgb, var(--mission-accent, var(--color-accent)) 32%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, #070a14 0%, #0c1120 55%, #05070d 100%);
   transition: background 0.4s ease;
 }
 
-.screen-result[data-result="win"] {
-  background: linear-gradient(160deg, #fff7e0 0%, var(--color-bg-alt) 55%, #eafff2 100%);
-}
-
+/* Fail keeps the same mission-accented backdrop, just dimmer/cooler —
+   a subdued variant of the same world rather than a different page. */
 .screen-result[data-result="fail"] {
-  background: linear-gradient(160deg, #eef1f8 0%, #e6ecf5 60%, #f4eef0 100%);
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 28%, color-mix(in srgb, var(--mission-accent, var(--color-accent)) 16%, transparent) 0%, transparent 70%),
+    linear-gradient(180deg, #070a14 0%, #0c1120 55%, #05070d 100%);
 }
 
 .result-fx {
@@ -919,55 +2384,117 @@
   pointer-events: none;
 }
 
-.result-card {
+/* No card: headline/line/actions sit directly on the atmospheric backdrop
+   — an end-of-mission moment, not a modal floating on a page. */
+.result-content {
   position: relative;
   z-index: 1;
-  background: var(--color-surface);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
-  padding: var(--space-4) var(--space-3);
-  max-width: 480px;
+  max-width: 560px;
   width: 100%;
-  animation: result-card-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  animation: result-content-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-@keyframes result-card-in {
-  0% { opacity: 0; transform: scale(0.85) translateY(10px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
+@keyframes result-content-in {
+  0% { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
 .result-title {
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
-  margin-bottom: var(--space-1);
-}
-
-.screen-result[data-result="win"] .result-title {
-  color: var(--color-success);
-}
-
-.screen-result[data-result="fail"] .result-title {
-  color: var(--color-text-muted);
-}
-
-.result-subtitle {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: clamp(2.1rem, 4.6vw, 3rem);
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  margin: 0 0 12px 0;
 }
 
 .result-line {
-  font-size: 1rem;
+  font-size: 1.15rem;
   font-weight: 600;
-  margin-bottom: var(--space-2);
-}
-
-.screen-result[data-result="win"] .result-line {
-  color: var(--color-success);
-}
-
-.screen-result[data-result="fail"] .result-line {
   color: var(--color-text-muted);
+  margin: 0 0 26px 0;
+}
+
+/* Final Mission Rating — a plain text star string (★★★/★★☆/☆☆☆), no live
+   transition needed since the result screen renders it once, already
+   final. Uses --mission-accent so this stays theme-agnostic, matching the
+   Play Again button below it. */
+.result-rating {
+  margin: 0 0 18px 0;
+}
+
+.result-rating-stars {
+  display: block;
+  font-size: 1.9rem;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: var(--mission-accent, var(--color-warning));
+}
+
+.result-rating-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.result-streak {
+  margin: 0 0 30px 0;
+}
+
+.result-streak-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.result-streak-value {
+  display: block;
+  margin-top: 4px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text);
+}
+
+.result-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Primary uses the mission accent (same hook as #start-btn on setup)
+   instead of the generic base accent. */
+.screen-result .btn-primary {
+  background: var(--mission-accent, var(--color-accent));
+}
+
+.screen-result .btn-primary:hover {
+  background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 85%, black);
+}
+
+/* Deliberately quiet — a text link, not a second button competing with
+   Play Again/Try Again for attention. */
+.result-secondary-btn {
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  padding: 6px 12px;
+}
+
+.result-secondary-btn:hover {
+  color: var(--color-text);
 }
 
 /* --- Win: confetti burst -------------------------------------------------
@@ -1031,12 +2558,20 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .result-card { animation: none; }
+  .result-content { animation: none; }
   .confetti-piece { animation: none; opacity: 0; }
   .screen-result[data-result="fail"] .smoke-puff { animation: none; opacity: 0.6; }
 }
 
 /* ==================== Responsive ==================== */
+
+/* Smaller laptop screens: pull the composition in a little rather than
+   letting the 920px column crowd the viewport edges. */
+@media (max-width: 1100px) {
+  .setup-card {
+    max-width: 720px;
+  }
+}
 
 @media (max-width: 480px) {
   .theme-option {
@@ -1044,12 +2579,80 @@
     max-width: 320px;
   }
 
-  .result-card {
-    padding: var(--space-3) var(--space-2);
-  }
-
   .smoke-puff {
     width: 80px;
     height: 80px;
+  }
+}
+
+/* Short landscape viewports (1366x768-class laptops/projectors: wide but
+   not very tall). Compresses vertical rhythm/heights only — never width,
+   never font sizes below their existing clamp floors — so the setup
+   screen keeps fitting without scroll and the live HUD's safe areas stay
+   correctly proportioned to the shorter Launch Energy/HUD footprint. */
+@media (max-height: 800px) {
+  .brand-header {
+    margin-bottom: 8px;
+  }
+
+  .brand-mark {
+    width: 38px;
+    height: 38px;
+    border-radius: 11px;
+  }
+
+  .setup-section-label {
+    margin: 10px 0 6px 0;
+  }
+
+  .theme-option .thumb {
+    aspect-ratio: 16 / 11;
+  }
+
+  .voice-level-option {
+    padding: 9px 0;
+  }
+
+  .duration-option {
+    padding: 6px 12px;
+  }
+
+  .room-setup-summary {
+    padding: 7px 14px;
+  }
+
+  #start-btn {
+    margin-top: 10px;
+    min-height: 44px;
+    padding: 0 24px;
+  }
+
+  .hud-top {
+    padding: 10px var(--space-3);
+  }
+
+  .screen-session[data-theme="rocket"] .hud-objective,
+  .screen-session[data-theme="rocket"] .hud-top-right {
+    padding: 8px 14px;
+  }
+
+  .hud-voice-level {
+    margin-top: 6px;
+  }
+
+  .screen-session[data-theme="rocket"] .hud-bottom {
+    bottom: clamp(8px, 1.4vh, 14px);
+  }
+
+  .screen-session[data-theme="rocket"] .energy-panel {
+    padding: 9px 18px 11px;
+  }
+
+  .screen-session[data-theme="rocket"] .wake-meter-track {
+    height: 22px;
+  }
+
+  .screen-session[data-theme="rocket"] .stage {
+    bottom: clamp(94px, 13vh, 128px);
   }
 }

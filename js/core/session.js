@@ -26,6 +26,7 @@ import { createNoiseClassifier } from "./noiseState.js";
 import { integrateWakeMeter } from "./wakeMeter.js";
 import { getClassifierConfig } from "./calibration.js";
 import { setState, getState } from "./state.js";
+import { recordMissionOutcome } from "./streak.js";
 
 const MAX_TICK_DT_MS = 250; // clamp: protect against large gaps (tab suspend, laptop sleep)
 
@@ -38,10 +39,12 @@ let onFail = null;         // callback: notify app.js to trigger the active them
 /**
  * @param {object} [opts]
  * @param {number} [opts.durationSeconds] - selected mission length; defaults to the last-selected duration
+ * @param {number} [opts.voiceLevel] - selected Voice Level (0-3); defaults to the last-selected level.
+ *   Carried into state only — not yet mapped to sensitivity/classifier behavior.
  * @param {() => void} [opts.onFail] - called once when the Wake Meter reaches 100
  * @returns {Promise<boolean>} true if mic granted and the mission started.
  */
-export async function startSession({ durationSeconds, onFail: failCb } = {}) {
+export async function startSession({ durationSeconds, voiceLevel, onFail: failCb } = {}) {
   const { status } = getState();
   if (isStarting || status === "running" || status === "paused") return false;
   isStarting = true;
@@ -58,6 +61,7 @@ export async function startSession({ durationSeconds, onFail: failCb } = {}) {
     }
 
     const duration = durationSeconds || getState().selectedDurationSeconds;
+    const level = voiceLevel !== undefined ? voiceLevel : getState().voiceLevel;
     lastTickTime = performance.now();
     setState({
       status: "running",
@@ -68,6 +72,10 @@ export async function startSession({ durationSeconds, onFail: failCb } = {}) {
       noiseState: "CALM",
       selectedDurationSeconds: duration,
       remainingSeconds: duration,
+      voiceLevel: level,
+      // Every new mission is a genuinely new rating attempt (Play Again included).
+      peakWakeMeter: 0,
+      resultStreak: null,
     });
     return true;
   } finally {
@@ -91,10 +99,18 @@ function handleLevel(level) {
   const { state: noiseState } = classifier.update(level);
   const wakeMeter = integrateWakeMeter(state.wakeMeter, noiseState, dtSeconds);
   const remainingSeconds = Math.max(0, state.remainingSeconds - dtSeconds);
+  // Monotonic: the Mission Rating (rating.js) is derived from this, never
+  // from the current wakeMeter, so a star lost mid-mission never returns
+  // even if the room quiets back down.
+  const peakWakeMeter = Math.max(state.peakWakeMeter, wakeMeter);
 
   if (wakeMeter >= 100) {
     resultLocked = true;
-    setState({ noiseLevel: level, noiseState, wakeMeter: 100, locked: true });
+    // Streak update happens exactly once, right here — the same instant
+    // resultLocked flips true for a fail, guarded from ever re-running by
+    // the resultLocked check at the top of this function.
+    const resultStreak = recordMissionOutcome(false);
+    setState({ noiseLevel: level, noiseState, wakeMeter: 100, locked: true, peakWakeMeter: 100, resultStreak });
     stopAudio();
     if (onFail) onFail();
     return;
@@ -102,15 +118,17 @@ function handleLevel(level) {
 
   if (remainingSeconds <= 0) {
     resultLocked = true;
+    const resultStreak = recordMissionOutcome(true);
     setState({
       noiseLevel: level, noiseState, wakeMeter, remainingSeconds: 0,
       locked: true, status: "ended", result: "win",
+      peakWakeMeter, resultStreak,
     });
     stopAudio();
     return;
   }
 
-  setState({ noiseLevel: level, noiseState, wakeMeter, remainingSeconds });
+  setState({ noiseLevel: level, noiseState, wakeMeter, remainingSeconds, peakWakeMeter });
 }
 
 export function pauseSession() {
@@ -156,4 +174,22 @@ export function reportFailEventFinished() {
 /** Re-requests microphone access after a prior denial, reusing the same duration/callback. */
 export function retryMicPermission() {
   return startSession({ durationSeconds: getState().selectedDurationSeconds, onFail });
+}
+
+/**
+ * Development-only: drives the session through the EXACT SAME fail
+ * resolution path handleLevel() takes at wakeMeter>=100 (same guard,
+ * same recordMissionOutcome() call, same lock/setState shape) — for
+ * QA/testing without needing genuinely loud microphone input to reach
+ * 100%. Never called by production code paths.
+ */
+export function qcDebugForceFail() {
+  const { status, locked } = getState();
+  if ((status !== "running" && status !== "paused") || locked || resultLocked) return false;
+  resultLocked = true;
+  const resultStreak = recordMissionOutcome(false);
+  setState({ wakeMeter: 100, locked: true, peakWakeMeter: 100, resultStreak });
+  stopAudio();
+  if (onFail) onFail();
+  return true;
 }

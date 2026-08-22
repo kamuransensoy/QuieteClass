@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Rocket — Three.js POC</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #04060c; overflow: hidden; }
+  canvas { display: block; }
+  #hud {
+    position: fixed; inset: 0; pointer-events: none;
+    font-family: system-ui, -apple-system, sans-serif; color: #eef1f7;
+  }
+  #panel {
+    position: absolute; left: 20px; bottom: 20px; width: 340px;
+    background: rgba(8, 12, 24, 0.72); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px; padding: 16px 18px; pointer-events: auto;
+    backdrop-filter: blur(6px);
+  }
+  #panel h1 { font-size: 0.95rem; margin: 0 0 2px 0; letter-spacing: 0.02em; }
+  #panel .sub { font-size: 0.72rem; color: #9aa4b8; margin: 0 0 14px 0; }
+  #panel label { display: flex; justify-content: space-between; font-size: 0.78rem;
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #9aa4b8; }
+  #energyValue { color: #ffb347; font-variant-numeric: tabular-nums; }
+  #energySlider { width: 100%; margin: 8px 0 10px 0; accent-color: #ff8c5a; }
+  #status { font-size: 0.85rem; font-weight: 700; margin: 0 0 12px 0; }
+  #status[data-band="dormant"] { color: #5b8cff; }
+  #status[data-band="build"] { color: #2dd4c8; }
+  #status[data-band="ignition"] { color: #ffb347; }
+  #status[data-band="intense"] { color: #ff6b6b; }
+  #status[data-band="launch"] { color: #fff; }
+  .btnRow { display: flex; gap: 8px; }
+  button {
+    flex: 1; padding: 9px 10px; border-radius: 8px; border: none; cursor: pointer;
+    font-weight: 700; font-size: 0.8rem; font-family: inherit;
+  }
+  #launchBtn { background: #ff6b6b; color: #fff; }
+  #resetBtn { background: rgba(255,255,255,0.12); color: #eef1f7; }
+  #hint { position: absolute; top: 16px; left: 20px; font-size: 0.72rem; color: #9aa4b8;
+    background: rgba(8,12,24,0.55); padding: 6px 10px; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<div id="hud">
+  <div id="hint">Three.js Rocket POC — drag to orbit, scroll to zoom</div>
+  <div id="panel">
+    <h1>Launch Energy — Test Rig</h1>
+    <p class="sub">Standalone Three.js POC. Not wired to QuietClass audio.</p>
+    <label>Launch Energy <span id="energyValue">0%</span></label>
+    <input type="range" id="energySlider" min="0" max="100" value="0" step="1" />
+    <p id="status" data-band="dormant">SAFE — engines dormant</p>
+    <div class="btnRow">
+      <button id="launchBtn">Launch Now</button>
+      <button id="resetBtn">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.169.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.169.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
+
+// --- helpers -------------------------------------------------------------
+const smoothstep = (e0, e1, x) => {
+  const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0)));
+  return t * t * (3 - 2 * t);
+};
+
+function radialTexture(stops, size = 128) {
+  const c = document.createElement("canvas");
+  c.width = c.height = size;
+  const ctx = c.getContext("2d");
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  stops.forEach(([offset, color]) => g.addColorStop(offset, color));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+const coreTex = radialTexture([[0, "rgba(255,255,255,1)"], [0.4, "rgba(255,246,213,0.9)"], [1, "rgba(255,246,213,0)"]]);
+const innerTex = radialTexture([[0, "rgba(255,242,196,0.95)"], [0.5, "rgba(255,180,71,0.6)"], [1, "rgba(255,180,71,0)"]]);
+const outerTex = radialTexture([[0, "rgba(255,150,60,0.8)"], [0.55, "rgba(226,73,42,0.4)"], [1, "rgba(226,73,42,0)"]]);
+const smokeTex = radialTexture([[0, "rgba(255,255,255,0.9)"], [0.5, "rgba(255,255,255,0.35)"], [1, "rgba(255,255,255,0)"]]);
+
+// --- renderer / scene / camera -------------------------------------------
+const canvas = document.createElement("canvas");
+document.body.prepend(canvas);
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x050810);
+scene.fog = new THREE.FogExp2(0x0a1020, 0.028);
+
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 300);
+camera.position.set(11, 7, 15);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 5, 0);
+controls.enableDamping = true;
+controls.minDistance = 6;
+controls.maxDistance = 40;
+controls.maxPolarAngle = Math.PI * 0.49;
+controls.update();
+
+// Bloom composer — the flame/light emissive layers are what bloom; the
+// threshold keeps the matte metal hull from blooming.
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.15, 0.45, 0.72);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+  composer.setSize(innerWidth, innerHeight);
+});
+
+// --- lighting --------------------------------------------------------------
+scene.add(new THREE.AmbientLight(0x2a3660, 0.55));
+
+const moon = new THREE.DirectionalLight(0x8fb0ff, 1.1);
+moon.position.set(-14, 22, 10);
+moon.castShadow = true;
+moon.shadow.mapSize.set(2048, 2048);
+moon.shadow.camera.left = -14; moon.shadow.camera.right = 14;
+moon.shadow.camera.top = 18; moon.shadow.camera.bottom = -4;
+moon.shadow.camera.far = 50;
+moon.shadow.bias = -0.0015;
+scene.add(moon);
+
+const rim = new THREE.SpotLight(0x6f9bff, 4, 30, Math.PI / 6, 0.5, 1.2);
+rim.position.set(7, 12, -6);
+rim.target.position.set(0, 6, 0);
+scene.add(rim, rim.target);
+
+// Warm, dynamic — the actual point light source for the engine glow. This
+// is the thing SVG structurally cannot do: real illumination on the deck,
+// smoke, and rocket underside that responds to intensity in real time.
+const engineLight = new THREE.PointLight(0xffb347, 0, 22, 2);
+engineLight.position.set(0, 0.4, 0);
+
+// --- starfield ---------------------------------------------------------
+{
+  const N = 900;
+  const pos = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const r = 80 + Math.random() * 60;
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI * 0.55;
+    pos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+    pos[i * 3 + 1] = 6 + r * Math.cos(phi) * 0.6;
+    pos[i * 3 + 2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({
+    size: 1.1, map: smokeTex, color: 0xdfe6f5, transparent: true,
+    opacity: 0.8, depthWrite: false, sizeAttenuation: true,
+  });
+  scene.add(new THREE.Points(geo, mat));
+}
+
+// --- ground / platform / gantry -----------------------------------------
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(300, 300),
+  new THREE.MeshStandardMaterial({ color: 0x060a14, roughness: 1 }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -1.4;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const metalMat = new THREE.MeshStandardMaterial({ color: 0x232c46, metalness: 0.7, roughness: 0.45 });
+const darkMetalMat = new THREE.MeshStandardMaterial({ color: 0x12172a, metalness: 0.6, roughness: 0.5 });
+
+const platform = new THREE.Group();
+const deck = new THREE.Mesh(new THREE.CylinderGeometry(6.2, 6.6, 0.8, 40), metalMat);
+deck.position.y = 0;
+deck.castShadow = true; deck.receiveShadow = true;
+platform.add(deck);
+
+const trench = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.5, 32), new THREE.MeshStandardMaterial({ color: 0x02030a, roughness: 1 }));
+trench.position.y = 0.15;
+platform.add(trench);
+
+for (let i = 0; i < 4; i++) {
+  const a = (i / 4) * Math.PI * 2 + Math.PI / 4;
+  const leg = new THREE.Mesh(new THREE.BoxGeometry(0.35, 2.2, 0.35), darkMetalMat);
+  leg.position.set(Math.cos(a) * 5, -1.5, Math.sin(a) * 5);
+  leg.rotation.z = Math.cos(a) * 0.12;
+  leg.rotation.x = Math.sin(a) * 0.12;
+  leg.castShadow = true;
+  platform.add(leg);
+}
+
+const lightTex = radialTexture([[0, "rgba(255,180,80,1)"], [1, "rgba(255,180,80,0)"]]);
+for (let i = 0; i < 8; i++) {
+  const a = (i / 8) * Math.PI * 2;
+  const stanchion = new THREE.Mesh(
+    new THREE.SphereGeometry(0.12, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xffb347 }),
+  );
+  stanchion.position.set(Math.cos(a) * 5.9, 0.42, Math.sin(a) * 5.9);
+  platform.add(stanchion);
+}
+scene.add(platform);
+
+const gantry = new THREE.Group();
+gantry.position.set(6.2, 0, -1.5);
+const mast = new THREE.Mesh(new THREE.BoxGeometry(0.5, 13, 0.5), darkMetalMat);
+mast.position.y = 6;
+mast.castShadow = true;
+gantry.add(mast);
+for (let i = 0; i < 5; i++) {
+  const y = 1.5 + i * 2.4;
+  const brace = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.12, 0.12), darkMetalMat);
+  brace.position.set(0, y, 0);
+  brace.rotation.z = i % 2 === 0 ? 0.6 : -0.6;
+  gantry.add(brace);
+}
+const arm = new THREE.Mesh(new THREE.BoxGeometry(3.4, 0.35, 0.35), darkMetalMat);
+arm.position.set(-1.8, 8.5, 0);
+gantry.add(arm);
+const beacon = new THREE.Mesh(new THREE.SphereGeometry(0.16, 12, 12), new THREE.MeshBasicMaterial({ color: 0xff6b6b }));
+beacon.position.set(0, 12.7, 0);
+gantry.add(beacon);
+scene.add(gantry);
+
+// --- rocket --------------------------------------------------------------
+const hullMat = new THREE.MeshStandardMaterial({ color: 0xd8dee8, metalness: 0.75, roughness: 0.28 });
+const stripeMat = new THREE.MeshStandardMaterial({ color: 0x5b8cff, metalness: 0.4, roughness: 0.4, emissive: 0x16295c, emissiveIntensity: 0.5 });
+
+const rocket = new THREE.Group(); // moves/vibrates/launches — local (0,0,0) = engine base
+rocket.position.set(0, 0.4, 0);
+scene.add(rocket);
+
+function addShadow(mesh) { mesh.castShadow = true; mesh.receiveShadow = true; return mesh; }
+
+const engineSkirt = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.15, 1.1, 28), darkMetalMat));
+engineSkirt.position.y = 0.55;
+rocket.add(engineSkirt);
+
+const body = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.5, 5.2, 32), hullMat));
+body.position.y = 1.1 + 2.6;
+rocket.add(body);
+
+const stripe = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.14, 1.14, 0.35, 32), stripeMat));
+stripe.position.y = 2.4;
+rocket.add(stripe);
+
+const nose = addShadow(new THREE.Mesh(new THREE.ConeGeometry(1.1, 2.6, 32), hullMat));
+nose.position.y = 1.1 + 5.2 + 1.3;
+rocket.add(nose);
+
+const windowGlass = addShadow(new THREE.Mesh(
+  new THREE.SphereGeometry(0.62, 24, 24),
+  new THREE.MeshPhysicalMaterial({ color: 0x0a1220, metalness: 0.2, roughness: 0.15, emissive: 0x2c4fbf, emissiveIntensity: 0.4, clearcoat: 1 }),
+));
+windowGlass.position.set(0, 5.2, 1.02);
+rocket.add(windowGlass);
+const windowRim = addShadow(new THREE.Mesh(new THREE.TorusGeometry(0.66, 0.07, 12, 24), metalMat));
+windowRim.position.copy(windowGlass.position);
+rocket.add(windowRim);
+
+const finGeo = new THREE.BoxGeometry(0.14, 1.9, 1.3);
+[[-1, -0.55], [1, -0.55], [-0.72, 0.72], [0.72, 0.72]].forEach(([sx, sz]) => {
+  const fin = addShadow(new THREE.Mesh(finGeo, darkMetalMat));
+  fin.position.set(sx * 1.55, 1.4, sz * 1.55);
+  fin.rotation.y = Math.atan2(sz, sx);
+  fin.rotation.z = sx > 0 ? -0.32 : 0.32;
+  rocket.add(fin);
+});
+
+function buildBooster(sideX) {
+  const g = new THREE.Group();
+  g.position.set(sideX, 0.35, 0);
+  const bBody = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.62, 4.2, 20), hullMat));
+  bBody.position.y = 2.1;
+  g.add(bBody);
+  const bNose = addShadow(new THREE.Mesh(new THREE.ConeGeometry(0.6, 1.1, 20), darkMetalMat));
+  bNose.position.y = 4.2 + 0.55;
+  g.add(bNose);
+  return g;
+}
+const boosterL = buildBooster(-1.9);
+const boosterR = buildBooster(1.9);
+rocket.add(boosterL, boosterR);
+
+const nozzleGeo = new THREE.ConeGeometry(0.4, 0.7, 20, 1, true);
+function buildNozzle() {
+  const m = addShadow(new THREE.Mesh(nozzleGeo, new THREE.MeshStandardMaterial({
+    color: 0x1c2438, metalness: 0.6, roughness: 0.5, emissive: 0x000000,
+  })));
+  m.rotation.x = Math.PI;
+  return m;
+}
+const nozzleMain = buildNozzle(); nozzleMain.position.set(0, -0.05, 0); nozzleMain.scale.setScalar(1.15);
+const nozzleL = buildNozzle(); nozzleL.position.set(-1.9, 0.15, 0);
+const nozzleR = buildNozzle(); nozzleR.position.set(1.9, 0.15, 0);
+rocket.add(nozzleMain, nozzleL, nozzleR);
+
+rocket.add(engineLight);
+
+// --- exhaust plumes (sprites: always-soft, no hard geometry edges) -------
+function spriteLayer(tex, color, w, h, blending) {
+  const mat = new THREE.SpriteMaterial({ map: tex, color, transparent: true, depthWrite: false, blending });
+  const s = new THREE.Sprite(mat);
+  s.scale.set(w, h, 1);
+  return s;
+}
+
+function buildPlume(scale) {
+  const g = new THREE.Group();
+  const glow = spriteLayer(outerTex, 0xffb347, 3.2 * scale, 4.4 * scale, THREE.NormalBlending);
+  const outer = spriteLayer(outerTex, 0xff9d55, 1.5 * scale, 3.6 * scale, THREE.AdditiveBlending);
+  const inner = spriteLayer(innerTex, 0xffd23d, 0.9 * scale, 2.4 * scale, THREE.AdditiveBlending);
+  const core = spriteLayer(coreTex, 0xffffff, 0.45 * scale, 1.1 * scale, THREE.AdditiveBlending);
+  [glow, outer, inner, core].forEach((s) => { s.center.set(0.5, 0.92); g.add(s); }); // anchor near top so growth extends downward
+  g.userData = { glow, outer, inner, core };
+  return g;
+}
+
+const flameGroup = new THREE.Group();
+flameGroup.visible = false;
+rocket.add(flameGroup);
+
+const flameMain = buildPlume(1);
+flameMain.position.set(0, -0.05, 0);
+const flameBoosterL = buildPlume(0.68);
+flameBoosterL.position.set(-1.9, 0.1, 0);
+const flameBoosterR = buildPlume(0.68);
+flameBoosterR.position.set(1.9, 0.1, 0);
+flameGroup.add(flameMain, flameBoosterL, flameBoosterR);
+
+// --- smoke / vapor (illuminated by engineLight since it's real geometry) -
+const SMOKE_N = 220;
+const smokeGeo = new THREE.BufferGeometry();
+const smokePos = new Float32Array(SMOKE_N * 3);
+const smokeCol = new Float32Array(SMOKE_N * 3);
+const smokeAge = new Float32Array(SMOKE_N);
+const smokeSeed = new Float32Array(SMOKE_N * 2);
+for (let i = 0; i < SMOKE_N; i++) {
+  smokeAge[i] = Math.random();
+  smokeSeed[i * 2] = Math.random() * Math.PI * 2;
+  smokeSeed[i * 2 + 1] = 0.4 + Math.random() * 0.8;
+}
+smokeGeo.setAttribute("position", new THREE.BufferAttribute(smokePos, 3));
+smokeGeo.setAttribute("color", new THREE.BufferAttribute(smokeCol, 3));
+const smokeMat = new THREE.PointsMaterial({
+  size: 1.3, map: smokeTex, transparent: true, depthWrite: false,
+  vertexColors: true, opacity: 0.6, sizeAttenuation: true,
+});
+const smoke = new THREE.Points(smokeGeo, smokeMat);
+scene.add(smoke);
+
+function respawnSmoke(i) {
+  const a = Math.random() * Math.PI * 2;
+  const r = Math.random() * 2.2;
+  smokePos[i * 3] = Math.cos(a) * r;
+  smokePos[i * 3 + 1] = 0.4 + Math.random() * 0.3;
+  smokePos[i * 3 + 2] = Math.sin(a) * r;
+  smokeAge[i] = 0;
+}
+for (let i = 0; i < SMOKE_N; i++) respawnSmoke(i);
+
+// --- state / animation ------------------------------------------------
+const slider = document.getElementById("energySlider");
+const energyValueEl = document.getElementById("energyValue");
+const statusEl = document.getElementById("status");
+const launchBtn = document.getElementById("launchBtn");
+const resetBtn = document.getElementById("resetBtn");
+
+let targetEnergy = 0;
+let energy = 0;
+let launching = false;
+let launchT = 0;
+const LAUNCH_HOLD = 0.5;   // ignition flash before liftoff
+const LAUNCH_RISE = 4.5;   // liftoff duration
+const LAUNCH_TOTAL = LAUNCH_HOLD + LAUNCH_RISE;
+
+slider.addEventListener("input", () => {
+  targetEnergy = Number(slider.value) / 100;
+  energyValueEl.textContent = `${slider.value}%`;
+});
+launchBtn.addEventListener("click", () => {
+  slider.value = 100;
+  targetEnergy = 1;
+  energyValueEl.textContent = "100%";
+});
+resetBtn.addEventListener("click", () => {
+  launching = false; launchT = 0;
+  targetEnergy = 0; energy = 0;
+  slider.value = 0; energyValueEl.textContent = "0%";
+  rocket.position.set(0, 0.4, 0);
+  flameGroup.visible = false;
+  engineLight.intensity = 0;
+});
+
+function bandFor(e) {
+  if (launching) return ["launch", "LIFTOFF"];
+  if (e >= 0.85) return ["intense", "DANGER — launch imminent"];
+  if (e >= 0.70) return ["ignition", "WARNING — ignition"];
+  if (e >= 0.40) return ["build", "BUILDING — engines warming"];
+  return ["dormant", "SAFE — engines dormant"];
+}
+
+const clock = new THREE.Clock();
+
+function animate() {
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.elapsedTime;
+
+  energy += (targetEnergy - energy) * Math.min(1, dt * 3);
+
+  const [band, label] = bandFor(energy);
+  statusEl.textContent = label;
+  statusEl.dataset.band = band;
+
+  if (!launching && energy >= 0.995) {
+    launching = true;
+    launchT = 0;
+  }
+
+  const engineGlow = smoothstep(0.32, 0.68, energy);
+  const engineCore = smoothstep(0.48, 0.97, energy);
+  const flameMainI = smoothstep(0.70, 0.99, energy);
+  const flameBoostI = smoothstep(0.80, 0.99, energy);
+  const vibI = smoothstep(0.40, 0.98, energy);
+  const vaporI = smoothstep(0.15, 0.75, energy);
+
+  // nozzle heat
+  [nozzleMain, nozzleL, nozzleR].forEach((n) => {
+    n.material.emissive.setHex(0xff9d3f);
+    n.material.emissiveIntensity = engineCore * 1.4;
+  });
+  engineLight.intensity = engineGlow * 3 + Math.max(flameMainI, flameBoostI) * 12;
+
+  // vibration (small independent jitter)
+  const shakeX = launching ? 0 : (Math.sin(t * 37) * 0.6 + Math.sin(t * 71 + 1.3) * 0.4) * vibI * 0.04;
+  const shakeZ = launching ? 0 : (Math.sin(t * 43 + 0.5) * 0.5) * vibI * 0.03;
+
+  const groupOn = Math.max(flameMainI, flameBoostI);
+  flameGroup.visible = groupOn > 0.01 || launching;
+
+  function driveEngine(plumeGroup, base, freqA, freqB, phase) {
+    const flick = Math.sin(t * freqA + phase) * 0.5 + Math.sin(t * freqB + phase * 1.7) * 0.5;
+    const len = (0.35 + base * 1.15) * (1 + flick * 0.12);
+    const wid = (0.55 + base * 0.55) * (1 + flick * 0.06);
+    const { glow, outer, inner, core } = plumeGroup.userData;
+    [glow, outer, inner, core].forEach((s) => {
+      s.visible = base > 0.01;
+      s.material.opacity = base;
+    });
+    plumeGroup.scale.set(wid, len, 1);
+  }
+
+  if (!launching) {
+    driveEngine(flameMain, flameMainI, 29, 53, 0.7);
+    driveEngine(flameBoosterL, flameBoostI, 31, 59, 2.1);
+    driveEngine(flameBoosterR, flameBoostI, 37, 61, 0.3);
+  }
+
+  // launch sequence
+  if (launching) {
+    launchT += dt;
+    if (launchT <= LAUNCH_HOLD) {
+      const e = launchT / LAUNCH_HOLD;
+      driveEngine(flameMain, 1, 29, 53, 0.7);
+      driveEngine(flameBoosterL, Math.min(1, e * 1.3), 31, 59, 2.1);
+      driveEngine(flameBoosterR, Math.min(1, e * 1.3), 37, 61, 0.3);
+      rocket.position.y = 0.4 - e * 0.08; // brief compress before release
+      engineLight.intensity = 18 + e * 10;
+    } else {
+      const e = Math.min(1, (launchT - LAUNCH_HOLD) / LAUNCH_RISE);
+      const ease = 1 - Math.pow(1 - e, 2.4); // accelerating climb
+      rocket.position.y = 0.4 - 0.08 + ease * 26;
+      const stretch = 1 + ease * 2.2;
+      driveEngine(flameMain, 1, 29, 53, 0.7);
+      flameMain.scale.y *= stretch;
+      driveEngine(flameBoosterL, 1, 31, 59, 2.1);
+      flameBoosterL.scale.y *= stretch;
+      driveEngine(flameBoosterR, 1, 37, 61, 0.3);
+      flameBoosterR.scale.y *= stretch;
+      engineLight.intensity = 26 * (1 - ease * 0.3);
+      if (launchT >= LAUNCH_TOTAL) {
+        launching = false;
+        targetEnergy = 0; energy = 0;
+        slider.value = 0; energyValueEl.textContent = "0%";
+        rocket.position.set(0, 0.4, 0);
+        flameGroup.visible = false;
+      }
+    }
+  } else {
+    rocket.position.set(shakeX, 0.4, shakeZ);
+  }
+
+  // smoke update — spawns near the pad, drifts up, warm near engine
+  for (let i = 0; i < SMOKE_N; i++) {
+    smokeAge[i] += dt * 0.22 * (0.6 + vaporI * 1.4 + (launching ? 1.5 : 0));
+    if (smokeAge[i] > 1) respawnSmoke(i);
+    const age = smokeAge[i];
+    const seedA = smokeSeed[i * 2], seedR = smokeSeed[i * 2 + 1];
+    smokePos[i * 3] += Math.sin(t * 0.6 + seedA) * seedR * dt * 0.15;
+    smokePos[i * 3 + 1] += dt * (0.6 + age * 0.8);
+    smokePos[i * 3 + 2] += Math.cos(t * 0.5 + seedA) * seedR * dt * 0.15;
+    const warm = Math.max(0, 1 - age * 1.8) * (vaporI * 0.7 + (launching ? 0.6 : 0));
+    smokeCol[i * 3] = 0.55 + warm * 0.45;
+    smokeCol[i * 3 + 1] = 0.55 + warm * 0.25;
+    smokeCol[i * 3 + 2] = 0.6 - warm * 0.2;
+  }
+  smokeGeo.attributes.position.needsUpdate = true;
+  smokeGeo.attributes.color.needsUpdate = true;
+  smokeMat.opacity = 0.15 + vaporI * 0.55 + (launching ? 0.25 : 0);
+
+  controls.update();
+  composer.render();
+  requestAnimationFrame(animate);
+}
+animate();
+</script>
+</body>
+</html>
