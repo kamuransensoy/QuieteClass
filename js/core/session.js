@@ -13,13 +13,14 @@
 // looks like, only that the theme reports back when it's done.
 //
 // Sprint 5.1: the classifier is now created with a config derived from
-// room calibration + sensitivity (see calibration.js's
-// getClassifierConfig()), instead of transforming every raw mic sample.
-// Calibration only ever shifts WHERE the classifier's thresholds sit —
-// classifier.update() below always receives the completely raw,
-// unmodified mic level, every frame, whether calibrated or not.
-// Uncalibrated sessions get noiseState.js's own untouched default
-// config, so that behavior is unchanged from before calibration existed.
+// room calibration + sensitivity + the selected Voice Level (see
+// calibration.js's getClassifierConfig()), instead of transforming every
+// raw mic sample. Calibration/sensitivity/Voice Level only ever shift
+// WHERE the classifier's thresholds sit — classifier.update() below
+// always receives the completely raw, unmodified mic level, every frame,
+// regardless of calibration state or Voice Level. Uncalibrated sessions
+// get a baseline of 0 (see calibration.js), so that behavior is unchanged
+// from before calibration existed.
 
 import { startAudio, stopAudio } from "./audio.js";
 import { createNoiseClassifier } from "./noiseState.js";
@@ -40,7 +41,7 @@ let onFail = null;         // callback: notify app.js to trigger the active them
  * @param {object} [opts]
  * @param {number} [opts.durationSeconds] - selected mission length; defaults to the last-selected duration
  * @param {number} [opts.voiceLevel] - selected Voice Level (0-3); defaults to the last-selected level.
- *   Carried into state only — not yet mapped to sensitivity/classifier behavior.
+ *   Configures the classifier's thresholds for this mission (see calibration.js's getClassifierConfig).
  * @param {() => void} [opts.onFail] - called once when the Wake Meter reaches 100
  * @returns {Promise<boolean>} true if mic granted and the mission started.
  */
@@ -50,7 +51,12 @@ export async function startSession({ durationSeconds, voiceLevel, onFail: failCb
   isStarting = true;
 
   onFail = failCb || null;
-  classifier = createNoiseClassifier(getClassifierConfig());
+  // Resolved before the classifier is created so the selected Voice Level
+  // actually configures it (see calibration.js's getClassifierConfig) —
+  // previously the classifier was built from the OLD state.voiceLevel one
+  // line above where this now-current selection was even read.
+  const level = voiceLevel !== undefined ? voiceLevel : getState().voiceLevel;
+  classifier = createNoiseClassifier(getClassifierConfig(level));
   resultLocked = false;
 
   try {
@@ -61,7 +67,6 @@ export async function startSession({ durationSeconds, voiceLevel, onFail: failCb
     }
 
     const duration = durationSeconds || getState().selectedDurationSeconds;
-    const level = voiceLevel !== undefined ? voiceLevel : getState().voiceLevel;
     lastTickTime = performance.now();
     setState({
       status: "running",

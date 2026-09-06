@@ -59,7 +59,14 @@ export function createNoiseClassifier(config = NOISE_CONFIG) {
       nextState = rawState;
     } else if (rawIndex < currentIndex) {
       const t = config.thresholds;
-      const downThresholds = { HIGH: t.CRITICAL, MEDIUM: t.HIGH, LOW: t.MEDIUM, CALM: t.LOW };
+      // De-escalating FROM a state must compare against THAT state's own
+      // entry threshold (e.g. leaving HIGH requires dropping back below
+      // t.HIGH - margin) — not the threshold of the state above it, which
+      // was the bug here (leaving HIGH previously required dropping below
+      // t.CRITICAL - margin, making HIGH far stickier than intended and
+      // leaving CRITICAL with no hysteresis at all, since it had no entry
+      // in this map).
+      const downThresholds = { LOW: t.LOW, MEDIUM: t.MEDIUM, HIGH: t.HIGH, CRITICAL: t.CRITICAL };
       const boundary = downThresholds[order[currentIndex]];
       if (boundary === undefined || level < boundary - config.hysteresisMargin) {
         nextState = rawState;

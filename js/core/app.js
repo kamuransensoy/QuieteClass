@@ -15,11 +15,12 @@ import {
 import { registerTheme, getTheme, getAllThemes } from "./themeRegistry.js";
 import {
   getCalibrationState, setSensitivity, runCalibration, clearCalibration, getClassifierConfig,
-  sensitivityPercentToFactor,
+  sensitivityPercentToFactor, runAutoCalibration, hasAttemptedAutoCalibration,
 } from "./calibration.js";
 import { getMissionRating } from "./rating.js";
 import { getClassStreak } from "./streak.js";
 import * as missionAudio from "./missionAudio.js";
+import * as dragonAudio from "../themes/dragon/dragon_audio.js";
 import * as brandAudio from "./brandAudio.js";
 
 // qcDebugAudioStatus(): read-only snapshot of mission-audio internal state
@@ -28,6 +29,13 @@ import * as brandAudio from "./brandAudio.js";
 // production UI, changes nothing.
 window.qcDebugAudioStatus = () => {
   const snapshot = missionAudio.qcDebugAudioStatus();
+  console.table(snapshot.playing || {});
+  console.log(snapshot);
+  return snapshot;
+};
+// qcDebugDragonAudioStatus(): same pattern, for dragon_audio.js specifically.
+window.qcDebugDragonAudioStatus = () => {
+  const snapshot = dragonAudio.qcDebugAudioStatus();
   console.table(snapshot.playing || {});
   console.log(snapshot);
   return snapshot;
@@ -91,6 +99,7 @@ const howItWorksModal = document.getElementById("how-it-works-modal");
 const howItWorksCloseBtn = document.getElementById("how-it-works-close-btn");
 const howItWorksGotItBtn = document.getElementById("how-it-works-got-it-btn");
 const countdownNumberEl = document.getElementById("countdown-number");
+const countdownStatusEl = document.getElementById("countdown-status");
 
 const startBtn = document.getElementById("start-btn");
 const retryBtn = document.getElementById("retry-btn");
@@ -373,16 +382,19 @@ function initSoundControls() {
   missionSoundsOptionEls.forEach((opt) => {
     opt.addEventListener("click", () => {
       missionAudio.setEnabled(opt.dataset.sounds === "on");
+      dragonAudio.onSoundToggle();
       syncSoundControls();
     });
   });
   soundToggleBtn.addEventListener("click", () => {
     missionAudio.setEnabled(!missionAudio.isEnabled());
+    dragonAudio.onSoundToggle();
     syncSoundControls();
   });
   welcomeSoundToggleBtn.addEventListener("click", () => {
     const nowOn = !missionAudio.isEnabled();
     missionAudio.setEnabled(nowOn);
+    dragonAudio.onSoundToggle();
     if (!nowOn) brandAudio.stopIntro();
     syncSoundControls();
   });
@@ -497,7 +509,7 @@ function showResult(result) {
     resultRatingStarsEl.textContent = "★".repeat(stars) + "☆".repeat(3 - stars);
     resultRatingLabelEl.textContent = RESULT_WIN_RATING_LABELS[stars];
     resultStreakLabelEl.textContent = "🔥 Mission Streak";
-    missionAudio.playSuccessSequence();
+    if (selectedThemeId === "rocket") missionAudio.playSuccessSequence();
     spawnConfetti();
   } else {
     screens.result.setAttribute("data-result", "fail");
@@ -537,6 +549,9 @@ function render(state) {
         activeTheme = null;
         screens.session.removeAttribute("data-theme");
       }
+      // Safe no-op if Dragon wasn't the active theme — covers session end,
+      // End Mission, Result, and Try Again/Choose New Mission in one place.
+      dragonAudio.stopAll();
       if (state.status === "ended" && state.result) {
         setActiveScreen("result");
         showResult(state.result);
@@ -567,7 +582,8 @@ function render(state) {
       setActiveScreen("session");
       setPauseButtonState(state.status === "paused");
       hudPausedBadgeEl.hidden = state.status !== "paused";
-      missionAudio.setPaused(state.status === "paused");
+      if (selectedThemeId === "rocket") missionAudio.setPaused(state.status === "paused");
+      if (selectedThemeId === "dragon") dragonAudio.setPaused(state.status === "paused");
       if (!activeTheme) {
         const theme = getTheme(selectedThemeId);
         if (theme) {
@@ -587,7 +603,8 @@ function render(state) {
           lastRatingStars = null;
           renderMissionRating(3, LIVE_RATING_LABELS[3]);
           syncSoundControls();
-          missionAudio.startMission();
+          if (theme.id === "rocket") missionAudio.startMission();
+          if (theme.id === "dragon") dragonAudio.startMission();
           activeTheme.mount(stageEl);
         } else {
           // No silent fallback to any theme (e.g. Dragon): if selectedThemeId
@@ -628,13 +645,15 @@ function render(state) {
     if (stars !== lastRatingStars) {
       lastRatingStars = stars;
       renderMissionRating(stars, LIVE_RATING_LABELS[stars]);
-      missionAudio.onRatingChanged(stars);
+      if (selectedThemeId === "rocket") missionAudio.onRatingChanged(stars);
     }
 
-    // Continuous engine/critical-alarm intensity follows the CURRENT Wake
+    // Continuous engine/critical-alarm intensity (Rocket) or sleeping
+    // ambience + angry-threshold arming (Dragon) follows the CURRENT Wake
     // Meter (unlike the rating above, which follows peakWakeMeter) — audio
     // only observes this value, never writes it.
-    missionAudio.updateEnergy(state.wakeMeter);
+    if (selectedThemeId === "rocket") missionAudio.updateEnergy(state.wakeMeter);
+    if (selectedThemeId === "dragon") dragonAudio.updateEnergy(state.wakeMeter);
 
     // Forwarded on every update: each theme dedupes internally against
     // whatever it's already showing, so this stays cheap. Core only ever
@@ -766,6 +785,27 @@ async function beginMission() {
   missionStarting = true;
   countdownActive = true;
   setMissionStartLocks(true);
+  // Must be silent before any calibration sampling AND before the
+  // mission's own mic capture starts — moved ahead of both rather than
+  // just ahead of the countdown as before.
+  brandAudio.stopMenuMusic();
+
+  // Runs once per page session, before the very first mission: a brief
+  // silent ambient sample (no modal, no "stay quiet" prompt) so Sensitivity/
+  // Voice Level have a real room baseline without requiring the manual
+  // Calibrate Room flow. Try Again / later missions this same page load
+  // skip this — hasAttemptedAutoCalibration() only flips once.
+  if (!hasAttemptedAutoCalibration()) {
+    calibrationInProgress = true;
+    setActiveScreen("countdown");
+    countdownStatusEl.hidden = false;
+    countdownNumberEl.hidden = true;
+    await runAutoCalibration();
+    countdownStatusEl.hidden = true;
+    countdownNumberEl.hidden = false;
+    calibrationInProgress = false;
+    refreshCalibrationUI(); // Setup's Room Setup summary reflects the new state next time it's shown
+  }
 
   const started = await startSession({
     durationSeconds: selectedDurationSeconds,
@@ -774,9 +814,15 @@ async function beginMission() {
     // sequence already uses — never a separate timer duplicating its
     // duration, never a call into rocket_renderer.js itself.
     onFail: () => {
-      missionAudio.playFailSequence();
+      // Rocket keeps its own launch/fail sound via missionAudio; Dragon's
+      // fire cue is entirely separate (dragon_audio.js) and fired at this
+      // same call site — right alongside triggerFailEvent() — so it starts
+      // as close to the first FAIL frame as possible without coupling to
+      // individual animation frames.
+      if (selectedThemeId === "rocket") missionAudio.playFailSequence();
+      if (selectedThemeId === "dragon") dragonAudio.onFailStart();
       activeTheme && activeTheme.triggerFailEvent(() => {
-        missionAudio.stopFailSequence();
+        if (selectedThemeId === "rocket") missionAudio.stopFailSequence();
         reportFailEventFinished();
       });
     },
@@ -792,8 +838,7 @@ async function beginMission() {
   }
 
   pauseSession(); // freezes remainingSeconds at the full duration for the countdown's duration
-  brandAudio.stopMenuMusic(); // must be silent by the time the countdown is established
-  setActiveScreen("countdown");
+  setActiveScreen("countdown"); // already active if auto-calibration just ran above; harmless no-op re-activation otherwise
   runCountdown(() => {
     countdownActive = false;
     resumeSession(); // real countdown now begins ticking from the full duration
@@ -805,6 +850,7 @@ async function beginMission() {
 startBtn.addEventListener("click", () => {
   if (calibrationInProgress) return; // never let a mission grab the mic mid-calibration
   missionAudio.unlock(); // must happen synchronously within this user gesture
+  dragonAudio.unlock();
   beginMission();
 });
 
@@ -839,6 +885,7 @@ endBtn.addEventListener("click", () => {
 resultPrimaryBtn.addEventListener("click", () => {
   if (missionStarting || countdownActive) return; // duplicate/rapid-click guard
   missionAudio.unlock();
+  dragonAudio.unlock();
   endSession();
   beginMission();
 });
@@ -896,7 +943,7 @@ window.qcDebugSetWakeMeter = (value) => {
 window.qcDebugStatus = () => {
   const state = getState();
   const cal = getCalibrationState();
-  const config = getClassifierConfig();
+  const config = getClassifierConfig(state.voiceLevel);
   const snapshot = {
     micLevel: Number(state.noiseLevel.toFixed(4)),
     noiseState: state.noiseState,

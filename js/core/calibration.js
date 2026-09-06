@@ -50,6 +50,21 @@ export function sensitivityPercentToFactor(percent) {
   return FACTOR_AT_MIN_PERCENT + (FACTOR_AT_MAX_PERCENT - FACTOR_AT_MIN_PERCENT) * t;
 }
 
+// Voice Level (0-3, teacher-facing "how much talking is allowed") → a
+// divisor applied to the sensitivity-scaled threshold gap in
+// deriveThresholds() below. Beta starting values — not tuned from
+// simulated assumptions; real classroom testing will calibrate these.
+// Voice 0 (least tolerant/most sensitive) shrinks the gap (divides by
+// >1), so it takes LESS extra noise above baseline to escalate. Voice 3
+// (most tolerant) grows the gap (divides by <1). Voice 2 divides by
+// exactly 1.00, reproducing the existing/default threshold behavior.
+export const VOICE_MULTIPLIERS = { 0: 1.35, 1: 1.15, 2: 1.00, 3: 0.80 };
+const DEFAULT_VOICE_LEVEL = 2;
+
+export function voiceLevelToMultiplier(level) {
+  return VOICE_MULTIPLIERS[level] ?? VOICE_MULTIPLIERS[DEFAULT_VOICE_LEVEL];
+}
+
 function normalizeSensitivityPercent(value) {
   if (typeof value !== "number" || Number.isNaN(value)) return DEFAULT_SENSITIVITY_PERCENT;
   const stepped = Math.round(value / SENSITIVITY_STEP_PERCENT) * SENSITIVITY_STEP_PERCENT;
@@ -165,6 +180,88 @@ export async function runCalibration(onTick) {
   return { ok: true, baseline: median };
 }
 
+function medianAndSpread(samples) {
+  const sorted = [...samples].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  const p10 = sorted[Math.floor(sorted.length * 0.1)];
+  const p90 = sorted[Math.floor(sorted.length * 0.9)];
+  return { median, spread: p90 - p10 };
+}
+
+// --- Lightweight automatic calibration -----------------------------------
+// Runs once, silently, before the first mission of a page session — no
+// teacher action, no "stay silent" modal, just a brief ambient sample
+// using the same capture path as the manual flow above. Beta heuristics
+// below (sample floor, stability ratio) are not tuned from real classroom
+// data; they only decide whether a sample is trustworthy enough to save,
+// never how the resulting threshold gap is scaled.
+const AUTO_SAMPLE_MIN_MS = 3000;
+const AUTO_SAMPLE_MAX_MS = 5000;
+const AUTO_SAMPLE_POLL_MS = 250;
+const AUTO_MIN_SAMPLE_COUNT = 20; // sanity floor only — a healthy 3s capture yields far more than this
+const AUTO_MAX_RELATIVE_SPREAD = 0.6; // (p90-p10) / max(median, floor) — "has the ambient reading settled"
+
+let autoCalibrationAttempted = false;
+
+/** True once runAutoCalibration() has been attempted this page load (success or not) — it only ever runs once automatically; manual Recalibrate is the only other trigger. */
+export function hasAttemptedAutoCalibration() {
+  return autoCalibrationAttempted;
+}
+
+function isStable(samples) {
+  if (samples.length < AUTO_MIN_SAMPLE_COUNT) return false;
+  const { median, spread } = medianAndSpread(samples);
+  return spread <= Math.max(median, 0.05) * AUTO_MAX_RELATIVE_SPREAD;
+}
+
+/**
+ * Samples ambient mic input for AUTO_SAMPLE_MIN_MS, extending up to
+ * AUTO_SAMPLE_MAX_MS if the reading hasn't settled yet. Only overwrites
+ * the stored calibration if the final sample set is both large enough and
+ * stable enough — an unreliable read never replaces a previously-good
+ * calibration (or safe uncalibrated defaults), it simply leaves whatever
+ * was already active untouched. Caller (app.js) is responsible for
+ * ensuring no app music/effects are audible during this window and for
+ * not calling this concurrently with a mission's own mic capture — this
+ * function itself only ever runs startAudio()/stopAudio() sequentially,
+ * fully awaited, so it can never overlap a mission's own capture.
+ * @param {(status: "sampling"|"done") => void} [onStatus]
+ * @returns {Promise<{ok: boolean, baseline?: number}>}
+ */
+export async function runAutoCalibration(onStatus) {
+  autoCalibrationAttempted = true;
+  const samples = [];
+  const granted = await startAudio((level) => samples.push(level));
+  if (!granted) return { ok: false };
+
+  if (onStatus) onStatus("sampling");
+  const startTime = performance.now();
+  await new Promise((resolve) => {
+    const check = () => {
+      const elapsedMs = performance.now() - startTime;
+      const pastMin = elapsedMs >= AUTO_SAMPLE_MIN_MS;
+      const pastMax = elapsedMs >= AUTO_SAMPLE_MAX_MS;
+      if (pastMax || (pastMin && isStable(samples))) {
+        resolve();
+      } else {
+        setTimeout(check, AUTO_SAMPLE_POLL_MS);
+      }
+    };
+    setTimeout(check, AUTO_SAMPLE_POLL_MS);
+  });
+
+  stopAudio();
+  if (onStatus) onStatus("done");
+
+  if (!isStable(samples)) return { ok: false }; // insufficient/unreliable — previous calibration (if any) stays active, nothing saved
+
+  const { median } = medianAndSpread(samples);
+  calibration = { baseline: median, calibratedAt: Date.now() };
+  saveToStorage();
+  return { ok: true, baseline: median };
+}
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -172,26 +269,33 @@ function clamp(value, min, max) {
 /**
  * Derives classifier thresholds for a calibrated room:
  *
- *   derivedThreshold = baseline + defaultThreshold * sensitivityFactor
+ *   derivedThreshold = baseline + (defaultThreshold * sensitivityFactor) / voiceMultiplier
  *
+ * baseline itself is never multiplied — only the gap above it is scaled.
  * Each default threshold is re-anchored above the room's measured
  * baseline and scaled by the sensitivity factor. A larger factor (low
  * sensitivity %, up to 1.40x at 0%) stretches every gap above baseline,
  * so it takes MORE noise above the room's normal volume to escalate. A
  * smaller factor (high sensitivity %, down to 0.45x at 100%) compresses
- * those gaps, so it takes LESS.
+ * those gaps, so it takes LESS. voiceMultiplier applies the same shrink/
+ * grow relationship for the selected Voice Level (see VOICE_MULTIPLIERS
+ * above) — dividing by it, so Voice 0's 1.35 shrinks the gap (more
+ * sensitive) and Voice 3's 0.80 grows it (more tolerant); Voice 2's 1.00
+ * is a no-op, reproducing prior behavior exactly.
  *
  * Each derived value is clamped to [MIN_THRESHOLD, MAX_THRESHOLD], then
  * the four are forced into strict ascending order with at least MIN_GAP
  * between neighbors. This only actually changes anything at extreme
- * baseline/sensitivity combinations near the top of the scale, where
- * independent clamping alone could otherwise let two thresholds collide.
+ * baseline/sensitivity/voice combinations near the top of the scale,
+ * where independent clamping alone could otherwise let two thresholds
+ * collide.
  */
-export function deriveThresholds(baseline, factor) {
-  let low = clamp(baseline + BASE_DELTAS.LOW * factor, MIN_THRESHOLD, MAX_THRESHOLD);
-  let medium = clamp(baseline + BASE_DELTAS.MEDIUM * factor, MIN_THRESHOLD, MAX_THRESHOLD);
-  let high = clamp(baseline + BASE_DELTAS.HIGH * factor, MIN_THRESHOLD, MAX_THRESHOLD);
-  let critical = clamp(baseline + BASE_DELTAS.CRITICAL * factor, MIN_THRESHOLD, MAX_THRESHOLD);
+export function deriveThresholds(baseline, factor, voiceMultiplier = 1) {
+  const scale = factor / voiceMultiplier;
+  let low = clamp(baseline + BASE_DELTAS.LOW * scale, MIN_THRESHOLD, MAX_THRESHOLD);
+  let medium = clamp(baseline + BASE_DELTAS.MEDIUM * scale, MIN_THRESHOLD, MAX_THRESHOLD);
+  let high = clamp(baseline + BASE_DELTAS.HIGH * scale, MIN_THRESHOLD, MAX_THRESHOLD);
+  let critical = clamp(baseline + BASE_DELTAS.CRITICAL * scale, MIN_THRESHOLD, MAX_THRESHOLD);
 
   medium = Math.max(medium, low + MIN_GAP);
   high = Math.max(high, medium + MIN_GAP);
@@ -218,15 +322,21 @@ export function deriveThresholds(baseline, factor) {
  * useful even when calibration is skipped").
  *
  * hysteresisMargin and criticalResolveDwellSeconds are left exactly as
- * noiseState.js defines them in every case — calibration/sensitivity only
- * ever change WHERE the thresholds sit, never the classifier's
- * anti-flicker/debounce behavior.
+ * noiseState.js defines them in every case — calibration/sensitivity/
+ * Voice Level only ever change WHERE the thresholds sit, never the
+ * classifier's anti-flicker/debounce behavior, and never the Wake Meter's
+ * own integration rate (see wakeMeter.js, untouched).
+ *
+ * @param {number} [voiceLevel] - the selected Voice Level (0-3); defaults
+ *   to 2 (no-op multiplier) for any caller that doesn't have one handy
+ *   (e.g. a dev-only diagnostic snapshot) rather than throwing.
  */
-export function getClassifierConfig() {
+export function getClassifierConfig(voiceLevel = DEFAULT_VOICE_LEVEL) {
   const factor = sensitivityPercentToFactor(sensitivityPercent);
   const baseline = calibration ? calibration.baseline : 0;
+  const voiceMultiplier = voiceLevelToMultiplier(voiceLevel);
   return {
-    thresholds: deriveThresholds(baseline, factor),
+    thresholds: deriveThresholds(baseline, factor, voiceMultiplier),
     hysteresisMargin: NOISE_CONFIG.hysteresisMargin,
     criticalResolveDwellSeconds: NOISE_CONFIG.criticalResolveDwellSeconds,
   };

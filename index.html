@@ -221,6 +221,11 @@
        state.js's status (see runCountdown()/beginMission()). -->
   <section id="screen-countdown" class="screen screen-countdown" data-active="false">
     <p class="countdown-sr-only" aria-live="polite">Mission starting</p>
+    <!-- Shown only during the brief automatic room-calibration sample
+         before the very first mission of a page session (see app.js's
+         beginMission()) — replaces the number countdown for that moment,
+         never shown alongside it. -->
+    <p id="countdown-status" class="countdown-status" aria-live="polite" hidden>Setting up your room&hellip;</p>
     <div id="countdown-number" class="countdown-number" aria-hidden="true">5</div>
   </section>
 

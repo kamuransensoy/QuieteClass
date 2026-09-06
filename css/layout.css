@@ -421,6 +421,18 @@
   border: 0;
 }
 
+/* Lightweight status shown only during the brief automatic room-sample
+   before the first mission of a page session (see app.js's
+   beginMission()) — deliberately plain text, no spinner/modal, matching
+   "no silence-required modal" from the product brief. */
+.countdown-status {
+  font-family: var(--font-display);
+  font-weight: 550;
+  font-size: clamp(1.3rem, 3vw, 2rem);
+  color: #f4f6fa;
+  opacity: 0.85;
+}
+
 .countdown-number {
   font-family: var(--font-display);
   font-weight: 650;
