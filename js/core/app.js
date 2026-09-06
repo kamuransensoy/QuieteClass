@@ -174,9 +174,15 @@ function selectTheme(themeId) {
   selectedThemeId = themeId;
   const theme = getTheme(themeId);
   if (!theme) return;
+  // Optional per-theme hook (see dragon_theme.js) — begins warming any
+  // heavy assets (Dragon's frame timeline) as soon as the teacher selects
+  // that mission on Setup, well before Start Mission/the countdown.
+  // Rocket doesn't define this and is unaffected.
+  if (typeof theme.preload === "function") theme.preload();
   hudMissionTitleEl.textContent = theme.missionTitle;
   hudMissionHintEl.textContent = theme.missionHint;
   meterLabelEl.textContent = theme.meterLabel;
+  startBtn.textContent = `Start ${theme.name} Mission`;
   // Single color hook shared by the HUD goal area and the result screen —
   // set once here rather than duplicated per-consumer. Renderers never
   // read this; it's a chrome-only accent, not gameplay state.
@@ -946,5 +952,24 @@ window.qcDebugSetupState = () => {
     activeScreen: Object.keys(screens).find((key) => screens[key].getAttribute("data-active") === "true") || null,
   };
   console.table(snapshot);
+  return snapshot;
+};
+
+// qcDebugDragonStatus(): frame-timeline preload/health status and which
+// Dragon renderer implementation (frames vs the preserved pose fallback)
+// actually served the current/last mission. Works generically through
+// getTheme() rather than importing dragon_renderer.js directly, so app.js
+// doesn't need to know Dragon's internals — a theme without this optional
+// export (Rocket) just returns null. Development-only; never shown in
+// production UI.
+window.qcDebugDragonStatus = () => {
+  const theme = getTheme("dragon");
+  if (!theme || typeof theme.qcDebugStatus !== "function") {
+    console.warn("QuietClass debug: Dragon theme not available or has no status hook.");
+    return null;
+  }
+  const snapshot = theme.qcDebugStatus();
+  console.table(snapshot.frameLoadStatus || {});
+  console.log(snapshot);
   return snapshot;
 };

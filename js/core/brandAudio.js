@@ -138,8 +138,18 @@ function fadeIn(el, targetVolume, ms) {
     return;
   }
   const step = (now) => {
+    // Clamp t to [0,1], not just <=1: requestAnimationFrame's own callback
+    // timestamp can occasionally land a hair before the performance.now()
+    // captured in startTime above (it reflects when the frame began, not
+    // when this callback runs), making (now-startTime) briefly negative on
+    // the very first step — which, while fading UP, pushes the
+    // interpolated volume slightly below 0 and throws
+    // "volume ... is outside the range [0, 1]". fadeOutAndStop() already
+    // guards its own assignment with Math.max(0, ...); this is the
+    // equivalent guard for fadeIn(), clamping the actual value assigned
+    // rather than just t, so it's safe regardless of root cause.
     const t = Math.min(1, (now - startTime) / ms);
-    el.volume = startVolume + (targetVolume - startVolume) * t;
+    el.volume = Math.max(0, Math.min(1, startVolume + (targetVolume - startVolume) * t));
     if (t >= 1) {
       fadeRafIds.delete(el);
     } else {

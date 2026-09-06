@@ -502,10 +502,21 @@
 }
 
 .setup-card {
+  /* Single shared content width, reused by the mission cards' container
+     and every control below (Voice Level, Mission Time, Room Setup,
+     Mission Sounds, the CTA) so widening the screen widens the whole
+     interface together rather than leaving narrow controls stranded in
+     a now-wider card (see layout.css comments on those selectors).
+     Floor (680px) and vw coefficient below 1063px viewport width are
+     unchanged from the previous narrower design — this only raises the
+     ceiling and the growth rate above that, so tablet/narrow behavior is
+     untouched while desktop/smartboard viewports get substantially more
+     width (roughly 70-80% of common 1366-1920px desktop viewports). */
+  --setup-content-width: clamp(680px, 76vw, 1440px);
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: clamp(680px, 64vw, 920px);
+  max-width: var(--setup-content-width);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -515,7 +526,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-bottom: clamp(8px, 1.6vh, 14px);
+  margin-bottom: clamp(8px, 1.5vh, 15px);
 }
 
 /* Pure-CSS product mark: a gradient badge with a three-bar "level" glyph —
@@ -523,8 +534,8 @@
    built around. No image asset, no dependency. */
 .brand-mark {
   flex-shrink: 0;
-  width: 46px;
-  height: 46px;
+  width: clamp(46px, 3vw, 56px);
+  height: clamp(46px, 3vw, 56px);
   border-radius: 14px;
   display: flex;
   align-items: center;
@@ -551,7 +562,7 @@
 
 .brand-name {
   font-family: var(--font-display);
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(2rem, 3.2vw, 3rem);
   font-weight: 700;
   color: var(--color-text);
   margin: 0;
@@ -560,7 +571,7 @@
 
 .brand-tagline {
   color: var(--color-text-muted);
-  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-size: clamp(0.9rem, 1.1vw, 1.15rem);
   font-weight: 500;
   line-height: 1.4;
   margin: 4px 0 0 0;
@@ -570,14 +581,14 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.74rem;
+  font-size: clamp(0.74rem, 0.85vw, 0.85rem);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--color-text-muted);
   margin: clamp(12px, 2vh, 18px) 0 clamp(6px, 1vh, 10px) 0;
   width: 100%;
-  max-width: 660px;
+  max-width: var(--setup-content-width);
 }
 
 .setup-section-number {
@@ -613,7 +624,7 @@
 
 .setup-section-label-hero .setup-section-text {
   font-family: var(--font-display);
-  font-size: clamp(1rem, 1.3vw, 1.2rem);
+  font-size: clamp(1rem, 1.5vw, 1.4rem);
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -624,7 +635,7 @@
 
 .theme-cards {
   display: flex;
-  gap: 26px;
+  gap: clamp(20px, 2.4vw, 36px);
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
@@ -651,12 +662,17 @@
   --card-accent: var(--color-accent);
   background: none;
   border: none;
-  width: clamp(240px, 22vw, 320px);
+  /* Floor unchanged from the previous (narrower-desktop) design so
+     tablet/narrow viewports keep their existing card size — only the
+     vw coefficient and ceiling grow, making the cards the dominant
+     visual area on desktop/smartboard widths as the setup card itself
+     widens (see --setup-content-width above). */
+  width: clamp(260px, 30vw, 500px);
   color: var(--color-text);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: clamp(12px, 1vw, 16px);
   position: relative;
 }
 
@@ -743,13 +759,13 @@
 
 .theme-option .theme-name {
   font-family: var(--font-display);
-  font-size: clamp(1.25rem, 1.7vw, 1.5rem);
+  font-size: clamp(1.25rem, 2vw, 1.85rem);
   font-weight: 600;
   color: var(--card-accent);
 }
 
 .theme-option .theme-objective {
-  font-size: clamp(0.9rem, 1vw, 1rem);
+  font-size: clamp(0.9rem, 1.15vw, 1.15rem);
   font-weight: 500;
   line-height: 1.4;
   color: var(--color-text-muted);
@@ -759,21 +775,21 @@
 
 .voice-level-picker {
   display: flex;
-  gap: 8px;
+  gap: clamp(8px, 0.8vw, 12px);
   width: 100%;
-  max-width: 680px;
+  max-width: var(--setup-content-width);
   background: color-mix(in srgb, var(--color-text) 4%, transparent);
   border-radius: var(--radius-lg);
-  padding: 6px;
+  padding: clamp(6px, 0.5vw, 8px);
 }
 
 .voice-level-option {
   flex: 1;
-  padding: clamp(10px, 1.9vh, 14px) 0;
+  padding: clamp(10px, 1.8vh, 15px) 0;
   background: transparent;
   color: var(--color-text-muted);
   font-family: var(--font-display);
-  font-size: clamp(1.25rem, 1.6vw, 1.5rem);
+  font-size: clamp(1.25rem, 1.9vw, 1.75rem);
   font-weight: 700;
   line-height: 1;
   border-radius: 12px;
@@ -818,24 +834,24 @@
 
 .duration-picker {
   display: flex;
-  gap: 10px;
+  gap: clamp(10px, 1.2vw, 18px);
   flex-wrap: wrap;
   justify-content: center;
   width: 100%;
-  max-width: 640px;
+  max-width: var(--setup-content-width);
 }
 
 .duration-option {
   background: transparent;
   border: 1px solid rgba(35, 40, 58, 0.14);
-  border-radius: var(--radius-md);
-  padding: clamp(7px, 1.3vh, 10px) clamp(12px, 1.4vw, 16px);
+  border-radius: var(--radius-lg);
+  padding: clamp(10px, 1.6vh, 14px) clamp(14px, 2vw, 24px);
   color: var(--color-text-muted);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  min-width: 58px;
+  gap: 2px;
+  min-width: 68px;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
 
@@ -844,21 +860,21 @@
 }
 
 .duration-value {
-  font-size: 1.05rem;
-  font-weight: 600;
+  font-size: clamp(1.15rem, 1.3vw, 1.4rem);
+  font-weight: 700;
   line-height: 1;
   color: var(--color-text);
 }
 
 .duration-unit,
 .duration-custom-label {
-  font-size: 0.58rem;
+  font-size: clamp(0.58rem, 0.62vw, 0.68rem);
   font-weight: 600;
   letter-spacing: 0.08em;
 }
 
 .duration-custom-label {
-  font-size: 0.76rem;
+  font-size: clamp(0.76rem, 0.85vw, 0.9rem);
   padding: 5px 0;
 }
 
@@ -912,7 +928,7 @@
 
 .room-setup-details {
   width: 100%;
-  max-width: 660px;
+  max-width: var(--setup-content-width);
   margin-top: 4px;
 }
 
@@ -925,7 +941,7 @@
   gap: 12px;
   list-style: none;
   cursor: pointer;
-  padding: clamp(8px, 1.4vh, 11px) 16px;
+  padding: clamp(8px, 1.4vh, 12px) clamp(16px, 1.6vw, 22px);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--mission-accent, var(--color-accent)) 4%, #f8f3ea);
   border: 1px solid rgba(35, 40, 58, 0.07);
@@ -984,12 +1000,12 @@
 
 .room-setup-summary-label {
   color: var(--color-text);
-  font-size: 0.9rem;
+  font-size: clamp(0.9rem, 1vw, 1.05rem);
   font-weight: 600;
 }
 
 .room-setup-summary-status {
-  font-size: 0.78rem;
+  font-size: clamp(0.78rem, 0.85vw, 0.9rem);
   font-weight: 600;
   color: var(--color-text-muted);
 }
@@ -1138,13 +1154,13 @@
   justify-content: space-between;
   gap: 12px;
   width: 100%;
-  max-width: 660px;
-  margin-top: 10px;
+  max-width: var(--setup-content-width);
+  margin-top: clamp(10px, 1.1vh, 13px);
   padding: 2px 4px;
 }
 
 .mission-sounds-label {
-  font-size: 0.85rem;
+  font-size: clamp(0.85rem, 0.95vw, 1rem);
   font-weight: 600;
   color: var(--color-text);
 }
@@ -1160,9 +1176,9 @@
 .mission-sounds-option {
   background: transparent;
   color: var(--color-text-muted);
-  font-size: 0.8rem;
+  font-size: clamp(0.8rem, 0.9vw, 0.95rem);
   font-weight: 600;
-  padding: 5px 16px;
+  padding: clamp(5px, 0.55vh, 7px) clamp(16px, 1.4vw, 20px);
   border-radius: 999px;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
@@ -1181,29 +1197,33 @@
    form-submit look — a soft shadow only, no glow ring, so it reads as
    calm/confident rather than an arcade "press start" button. */
 #start-btn {
-  margin-top: clamp(10px, 1.6vh, 14px);
+  margin-top: clamp(14px, 1.8vh, 20px);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  width: clamp(280px, 26vw, 360px);
-  min-height: 50px;
+  /* Tied to the same --setup-content-width the rest of the form uses
+     (~38% of it), so the CTA grows/shrinks in step with the whole
+     screen instead of its own separate vw formula — wider and more
+     prominent on desktop, but never full-width (see the fixed ceiling). */
+  width: clamp(320px, calc(var(--setup-content-width) * 0.38), 560px);
+  min-height: clamp(58px, 3.6vh, 66px);
   padding: 0 clamp(24px, 3vw, 36px);
-  font-size: clamp(1rem, 1.15vw, 1.08rem);
+  font-size: clamp(1.05rem, 1.35vw, 1.3rem);
   font-weight: 700;
   letter-spacing: 0.01em;
   border-radius: 999px;
   background: var(--mission-accent, var(--color-accent));
-  box-shadow: 0 8px 18px -10px rgba(20, 20, 20, 0.35);
+  box-shadow: 0 10px 22px -10px rgba(20, 20, 20, 0.38);
 }
 
 #start-btn::before {
   content: "";
   width: 0;
   height: 0;
-  border-top: 7px solid transparent;
-  border-bottom: 7px solid transparent;
-  border-left: 11px solid currentColor;
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+  border-left: 13px solid currentColor;
   flex-shrink: 0;
 }
 
@@ -1997,8 +2017,79 @@
    live character scene itself (.dragon-stage and everything inside it) is
    built by dragon_renderer.js at mount() time into #stage. */
 
+/* Full-height, seamless den atmosphere — lives on #screen-session itself
+   (never clipped by the stage's own bottom safe-area) so there is exactly
+   ONE continuous background across the whole screen, including the
+   reserved strip below .stage where the Wake Level panel sits. Previously
+   the Pixi canvas painted its own warm gradient only inside its clipped
+   box while the plain .stage background (#050810, cool navy) showed
+   through below it — a hard, visibly rectangular seam right where the
+   panel begins. Fixed by moving the atmosphere here and making both
+   .stage and the Pixi canvas transparent (see dragon_renderer_frames.js's
+   drawEnvironment(), now platform/shadow only, not a background wash).
+   A soft amber halo (roughly where the character sits) and a restrained
+   vignette live in this same gradient stack — free, no extra Pixi cost. */
+.screen-session[data-theme="dragon"] {
+  background:
+    radial-gradient(ellipse 55% 50% at 50% 56%, color-mix(in srgb, var(--dragon-coral) 16%, transparent) 0%, transparent 70%),
+    radial-gradient(ellipse 140% 90% at 50% 50%, transparent 55%, rgba(3, 4, 8, 0.55) 100%),
+    linear-gradient(180deg, #0a0e1c 0%, #141b30 45%, #05070d 100%);
+  transition: background 0.4s ease;
+}
+
+/* Quiet-night sky dressing: a small soft moon + a sparse handful of static
+   stars, both plain radial-gradients on one pseudo-element (no images, no
+   canvas, no animation). ::before (not ::after) so it paints behind the
+   real DOM children (.stage/Pixi canvas, HUD) rather than on top of the
+   Dragon or fire. Moon sits upper-right — clear of the HUD countdown/
+   controls above it, clear of the character (which sits left-of-center),
+   and clear of the fire plume's path (breathes toward screen-left) so
+   FAIL contrast is untouched. Stars are kept in the same upper band,
+   away from HUD text and the character/fire zone. */
+.screen-session[data-theme="dragon"]::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    /* moon core + its own soft edge — 70%/30% keeps it clear of the HUD
+       countdown/control row (measured x:77.5-98%, y:0-16.7% across both
+       1920x1080 and 1366x768) with margin, and clear of the character,
+       which sits centered/left of it. */
+    radial-gradient(circle 26px at 70% 30%, rgba(232, 240, 255, 0.9) 0%, rgba(226, 236, 255, 0.55) 45%, rgba(226, 236, 255, 0.15) 75%, transparent 100%),
+    /* faint wider moonlight glow around it — radius kept small enough that
+       even its soft edge stays below the HUD control row on a 768px-tall
+       viewport (see comment above). */
+    radial-gradient(circle 100px at 70% 30%, rgba(160, 190, 255, 0.08) 0%, transparent 70%),
+    /* sparse static stars */
+    radial-gradient(1.4px 1.4px at 10% 13%, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1.2px 1.2px at 25% 23%, rgba(255, 255, 255, 0.55), transparent),
+    radial-gradient(1.6px 1.6px at 46% 10%, rgba(255, 255, 255, 0.7), transparent),
+    radial-gradient(1.2px 1.2px at 58% 20%, rgba(255, 255, 255, 0.5), transparent),
+    radial-gradient(1.4px 1.4px at 90% 22%, rgba(255, 255, 255, 0.65), transparent),
+    radial-gradient(1.2px 1.2px at 5% 27%, rgba(255, 255, 255, 0.5), transparent);
+}
+
+/* Toggled briefly by dragon_renderer_frames.js during the failure
+   cinematic's fire-burst phase only (see triggerFailEvent) — the amber
+   halo behind the character intensifies as if the flame is genuinely
+   lighting the den, then eases back to the resting atmosphere above.
+   Restrained: HUD contrast is unaffected, only the background shifts. */
+/* QA pass: the original 62%/56% ellipse at a 42% amber mix read as a
+   global orange wash reaching the screen edges/corners — explicitly what
+   section 19 says to avoid ("do NOT globally wash whole screen orange").
+   Tightened to stay a localized glow behind the character. */
+.screen-session[data-theme="dragon"].dragon-fire-lit {
+  background:
+    radial-gradient(ellipse 40% 36% at 50% 56%, color-mix(in srgb, var(--dragon-amber) 24%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 140% 90% at 50% 50%, transparent 55%, rgba(3, 4, 8, 0.55) 100%),
+    linear-gradient(180deg, #0a0e1c 0%, #141b30 45%, #05070d 100%);
+  transition: background 0.2s ease;
+}
+
 .screen-session[data-theme="dragon"] .stage {
   bottom: clamp(112px, 14vh, 150px);
+  background: transparent;
 }
 
 .screen-session[data-theme="dragon"] .hud-top {
@@ -2084,13 +2175,16 @@
 }
 
 .screen-session[data-theme="dragon"] .energy-panel {
-  max-width: clamp(420px, 48vw, 620px);
+  max-width: clamp(380px, 42vw, 560px);
   margin: 0 auto;
   padding: 12px 22px 14px;
   border-radius: 16px;
-  background: color-mix(in srgb, var(--dragon-deep) 62%, transparent);
-  border: 1px solid color-mix(in srgb, var(--dragon-cream) 10%, transparent);
-  box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.5);
+  background: color-mix(in srgb, var(--dragon-deep) 58%, transparent);
+  border: 1px solid color-mix(in srgb, var(--dragon-cream) 12%, transparent);
+  border-top-color: color-mix(in srgb, var(--dragon-cream) 22%, transparent);
+  box-shadow: 0 10px 28px -14px rgba(0, 0, 0, 0.6), inset 0 1px 0 color-mix(in srgb, var(--dragon-cream) 8%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
 }
 
 .screen-session[data-theme="dragon"] .energy-panel .meter-header,

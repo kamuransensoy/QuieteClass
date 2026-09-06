@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Dragon Frame-Scrub POC</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<div id="app">
+
+  <header class="header">
+    <h1>Dragon Frame-Scrub POC</h1>
+    <p class="sub">Isolated technical proof — NOT part of production QuietClass. Wake Meter (0–99) drives a pre-extracted WebP frame sequence, no video playback.</p>
+  </header>
+
+  <div id="loading" class="loading">
+    <div class="loading-bar-track"><div id="loading-bar" class="loading-bar-fill"></div></div>
+    <p id="loading-label">Loading frames&hellip; 0 / 0</p>
+  </div>
+
+  <main id="main" class="main" hidden>
+
+    <div class="stage-col">
+      <div class="stage">
+        <canvas id="canvas"></canvas>
+      </div>
+    </div>
+
+    <div class="panel-col">
+
+      <section class="panel">
+        <div class="readout-row">
+          <div class="readout">
+            <span class="readout-label">Current Wake Meter</span>
+            <span id="wake-readout" class="readout-value">0%</span>
+          </div>
+          <div class="readout">
+            <span class="readout-label">Current Frame</span>
+            <span id="frame-readout" class="readout-value">0 / 0</span>
+          </div>
+        </div>
+
+        <input type="range" id="wake-slider" min="0" max="99" step="1" value="0" />
+
+        <div class="preset-row">
+          <button type="button" class="preset-btn" data-wake="0">0%</button>
+          <button type="button" class="preset-btn" data-wake="25">25%</button>
+          <button type="button" class="preset-btn" data-wake="50">50%</button>
+          <button type="button" class="preset-btn" data-wake="75">75%</button>
+          <button type="button" class="preset-btn" data-wake="99">99%</button>
+        </div>
+
+        <div class="mode-row">
+          <button type="button" id="btn-auto-forward" class="mode-btn">AUTO FORWARD</button>
+          <button type="button" id="btn-auto-reverse" class="mode-btn">AUTO REVERSE</button>
+          <button type="button" id="btn-ping-pong" class="mode-btn">PING-PONG</button>
+          <button type="button" id="btn-stop" class="mode-btn mode-btn-stop">STOP</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Resolution variant</h2>
+        <div class="seg-row" id="variant-row">
+          <button type="button" class="seg-btn active" data-variant="original">Original<br /><small>1948×1064</small></button>
+          <button type="button" class="seg-btn" data-variant="1280">1280<br /><small>1280×699</small></button>
+          <button type="button" class="seg-btn" data-variant="960">960<br /><small>960×524</small></button>
+        </div>
+        <p id="variant-status" class="hint-text">Loading original…</p>
+      </section>
+
+      <section class="panel">
+        <h2>Cache strategy</h2>
+        <div class="seg-row" id="cache-row">
+          <button type="button" class="seg-btn active" data-cache="full">FULL CACHE</button>
+          <button type="button" class="seg-btn" data-cache="windowed">WINDOWED CACHE</button>
+        </div>
+        <p class="hint-text">Windowed keeps only current ± <span id="window-size-label">15</span> frames decoded; frames outside the window are released via <code>ImageBitmap.close()</code>.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Rapid jump test</h2>
+        <p class="hint-text">Runs each named jump once, from a settled state, and measures time-to-visible.</p>
+        <div class="jump-row">
+          <button type="button" class="jump-btn" data-from="0" data-to="99">0→99</button>
+          <button type="button" class="jump-btn" data-from="99" data-to="0">99→0</button>
+          <button type="button" class="jump-btn" data-from="10" data-to="90">10→90</button>
+          <button type="button" class="jump-btn" data-from="90" data-to="25">90→25</button>
+          <button type="button" class="jump-btn" data-from="25" data-to="75">25→75</button>
+          <button type="button" id="btn-run-all-jumps" class="jump-btn jump-btn-all">RUN ALL 5</button>
+        </div>
+        <pre id="jump-results" class="results-box">No jump tests run yet.</pre>
+      </section>
+
+      <section class="panel">
+        <h2>Realistic noisy Wake Meter sequence</h2>
+        <p class="hint-text">Feeds the fixed 22-value sequence through smoothed target-chasing, once per cache mode, back to back.</p>
+        <button type="button" id="btn-run-noise" class="jump-btn jump-btn-all" style="width:100%">RUN SEQUENCE (FULL vs WINDOWED)</button>
+        <pre id="noise-results" class="results-box">No sequence run yet.</pre>
+      </section>
+
+      <section class="panel telemetry">
+        <h2>Telemetry — active variant / mode</h2>
+        <dl id="telemetry-list" class="telemetry-list">
+          <dt>Frame count</dt><dd id="tm-frame-count">–</dd>
+          <dt>Frame dimensions</dt><dd id="tm-dims">–</dd>
+          <dt>Total asset size (fetched)</dt><dd id="tm-total-size">–</dd>
+          <dt>Average frame size</dt><dd id="tm-avg-size">–</dd>
+          <dt>Initial load time</dt><dd id="tm-load-time">–</dd>
+          <dt>Theoretical decoded memory (raw RGBA, all frames)</dt><dd id="tm-decoded-mem">–</dd>
+          <dt>JS heap (performance.memory, Chrome-only, approximate)</dt><dd id="tm-heap">–</dd>
+          <dt>Last frame-swap latency</dt><dd id="tm-swap-latency">–</dd>
+          <dt>Avg frame-swap latency (last 60)</dt><dd id="tm-swap-avg">–</dd>
+          <dt>Max frame-swap latency (session)</dt><dd id="tm-swap-max">–</dd>
+          <dt>Swaps &gt; 32ms (stutter, session)</dt><dd id="tm-stutter-count">–</dd>
+          <dt>Windowed: frames currently resident</dt><dd id="tm-resident-count">–</dd>
+          <dt>Windowed: last decode latency</dt><dd id="tm-decode-latency">–</dd>
+          <dt>Windowed: last stale-frame duration</dt><dd id="tm-stale-duration">–</dd>
+          <dt>Windowed: blank-frame events (session)</dt><dd id="tm-blank-count">–</dd>
+          <dt>Windowed: coalesced/superseded requests (session)</dt><dd id="tm-coalesced-count">–</dd>
+        </dl>
+      </section>
+
+    </div>
+
+  </main>
+
+  <section id="compare-section" class="compare-section" hidden>
+    <div class="compare-header">
+      <h2>Side-by-side: 1280 vs 960</h2>
+      <div class="preset-row compare-preset-row">
+        <button type="button" class="preset-btn compare-preset-btn" data-wake="0">0%</button>
+        <button type="button" class="preset-btn compare-preset-btn" data-wake="25">25%</button>
+        <button type="button" class="preset-btn compare-preset-btn" data-wake="50">50%</button>
+        <button type="button" class="preset-btn compare-preset-btn" data-wake="75">75%</button>
+        <button type="button" class="preset-btn compare-preset-btn" data-wake="99">99%</button>
+      </div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-col">
+        <p class="compare-label">1280×699</p>
+        <div class="stage compare-stage"><canvas id="canvas-1280"></canvas></div>
+      </div>
+      <div class="compare-col">
+        <p class="compare-label">960×524</p>
+        <div class="stage compare-stage"><canvas id="canvas-960"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <button type="button" id="btn-toggle-compare" class="compare-toggle-btn">Show 1280 vs 960 comparison</button>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

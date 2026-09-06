@@ -6,25 +6,14 @@
 // this module purely for visualization. This module never touches HUD DOM
 // — the existing HTML HUD (meter, timer, Pause/End) remains authoritative.
 //
-// PixiJS itself is not bundled — it's loaded lazily (once per page load,
-// cached) from https://pixijs.download/release/pixi.min.js, PixiJS's own
-// CDN (NOT jsDelivr, which was found to be blocked by a network proxy in
-// testing). Dragon sessions never pay this cost since it only loads when
-// the Rocket theme actually mounts.
+// PixiJS itself is not bundled directly into this file — it's loaded via
+// the shared js/core/pixiLoader.js (vendored locally as
+// js/vendor/pixi.min.js, no CDN/network dependency), the same loader
+// Dragon uses. Whichever theme mounts first pays the one-time load cost;
+// window.PIXI is cached and reused either way, so there is still only
+// ever one PixiJS on the page.
 
-let pixiLoadPromise = null;
-function ensurePixiLoaded() {
-  if (window.PIXI) return Promise.resolve();
-  if (pixiLoadPromise) return pixiLoadPromise;
-  pixiLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://pixijs.download/release/pixi.min.js";
-    script.onload = () => resolve();
-    script.onerror = () => reject(new Error("rocket_renderer: failed to load PixiJS"));
-    document.head.appendChild(script);
-  });
-  return pixiLoadPromise;
-}
+import { ensurePixiLoaded } from "../../core/pixiLoader.js";
 
 const ASSET_PATH = "assets/rocket/rocket.png";
 const NOZZLE_POINTS_REAL = [
