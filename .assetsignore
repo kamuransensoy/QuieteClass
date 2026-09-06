@@ -1,0 +1,34 @@
+# Cloudflare Workers static assets — excludes non-runtime source/backup/dev
+# files so the deploy ships production files only. gitignore-style syntax,
+# resolved relative to this file (the assets directory root, see
+# wrangler.jsonc's assets.directory). Does not delete or move anything —
+# these files stay in the repo, they are simply not uploaded as assets.
+
+# Oversized source/backup video and image assets not referenced at runtime
+# (the 29.6 MiB original exceeds Workers' 25 MiB per-asset limit; the others
+# are excluded for the same "runtime files only" reason).
+assets/ui/source_originals/
+assets/dragon/source/
+assets/dragon/timeline_prod_v1_backup_20260904_223246/
+assets/dragon/timeline_pose_v1_backup/
+assets/dragon/timeline/fail_before_left_feather_backup_20260904_233215/
+assets/dragon/timeline/fail_straight_feather_backup_20260905_000655/
+
+# Prototype/experimental code, never linked from index.html
+experiments/
+
+# VCS, tooling, and editor directories
+.git/
+.claude/
+.agents/
+.playwright-cli/
+.playwright/
+.impeccable/
+.vscode/
+
+# Misc dev-only files
+.DS_Store
+.gitignore
+CLAUDE.md
+PRODUCT.md
+skills-lock.json

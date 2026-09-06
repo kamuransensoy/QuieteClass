@@ -1,0 +1,12 @@
+{
+  // Cloudflare Workers static assets — QuietClass is a pure static site
+  // (vanilla HTML/CSS/ES6 modules, no build step, no server logic), so
+  // this is an assets-only Worker: no "main" script needed.
+  "name": "quietclass",
+  "compatibility_date": "2026-09-06",
+  "assets": {
+    // Repo root: index.html, css/, js/, and assets/ all live here already
+    // (this is the exact directory already served locally during QA).
+    "directory": "./"
+  }
+}
