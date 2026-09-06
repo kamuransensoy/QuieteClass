@@ -52,13 +52,17 @@ export function sensitivityPercentToFactor(percent) {
 
 // Voice Level (0-3, teacher-facing "how much talking is allowed") → a
 // divisor applied to the sensitivity-scaled threshold gap in
-// deriveThresholds() below. Beta starting values — not tuned from
-// simulated assumptions; real classroom testing will calibrate these.
-// Voice 0 (least tolerant/most sensitive) shrinks the gap (divides by
-// >1), so it takes LESS extra noise above baseline to escalate. Voice 3
-// (most tolerant) grows the gap (divides by <1). Voice 2 divides by
-// exactly 1.00, reproducing the existing/default threshold behavior.
-export const VOICE_MULTIPLIERS = { 0: 1.35, 1: 1.15, 2: 1.00, 3: 0.80 };
+// deriveThresholds() below. Voice 0 (least tolerant/most sensitive)
+// shrinks the gap (divides by >1), so it takes LESS extra noise above
+// baseline to escalate. Voice 3 (most tolerant) grows the gap (divides by
+// <1). Voice 2 divides by exactly 1.00, reproducing the existing/default
+// threshold behavior. Widened from the original 1.35/1.15/1.00/0.80 beta
+// values — verified correct-but-too-weak (see the Voice Level investigation:
+// the old full range moved thresholds ~2.4x less than Sensitivity's own
+// full range) — so Voice Level alone is now a meaningfully distinct
+// control, not something that only matters once Sensitivity is also
+// touched. Magnitude only; the formula/architecture is unchanged.
+export const VOICE_MULTIPLIERS = { 0: 1.75, 1: 1.30, 2: 1.00, 3: 0.60 };
 const DEFAULT_VOICE_LEVEL = 2;
 
 export function voiceLevelToMultiplier(level) {

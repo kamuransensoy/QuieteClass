@@ -176,11 +176,6 @@ export function reportFailEventFinished() {
   setState({ status: "ended", result: "fail" });
 }
 
-/** Re-requests microphone access after a prior denial, reusing the same duration/callback. */
-export function retryMicPermission() {
-  return startSession({ durationSeconds: getState().selectedDurationSeconds, onFail });
-}
-
 /**
  * Development-only: drives the session through the EXACT SAME fail
  * resolution path handleLevel() takes at wakeMeter>=100 (same guard,

@@ -59,6 +59,13 @@ let sounds = null; // { ambience, engine, critical, warning1, warning2, fail, su
 let unlocked = false;
 let enabled = true;
 let paused = false;
+// True only between startMission() and this mission actually ending
+// (stopAll(), or the fail/success sequences that conclude it). Sound
+// Off->On (setEnabled) must never revive ambience/engine/critical when
+// this is false — e.g. a Dragon mission is active, or nothing is — since
+// setEnabled() is the SHARED, theme-agnostic toggle and previously had no
+// way to know whether a Rocket mission was even the one currently running.
+let missionActive = false;
 let lastWakeMeter = 0;
 let warning1Played = false;
 let warning2Played = false;
@@ -161,7 +168,7 @@ function criticalVolumeForPct(pct) {
 }
 
 function recomputeContinuousTargets() {
-  if (!enabled || paused) {
+  if (!enabled || paused || !missionActive) {
     targets.ambience = 0;
     targets.engine = 0;
     targets.critical = 0;
@@ -261,6 +268,7 @@ export function unlock() {
 /** Call exactly once per mission, at mount time. Resets per-mission guards and fades ambience in. */
 export function startMission() {
   ensureSounds();
+  missionActive = true;
   paused = false;
   warning1Played = false;
   warning2Played = false;
@@ -307,6 +315,7 @@ function playOneShot(key, volume) {
 /** Call at the exact instant the mission fails (Wake Meter reaches 100) — before the visual launch sequence's onComplete. */
 export function playFailSequence() {
   const s = ensureSounds();
+  missionActive = false;
   paused = false;
   targets.ambience = 0;
   targets.engine = 0;
@@ -329,6 +338,7 @@ export function stopFailSequence() {
 /** Call once when a win result is shown. */
 export function playSuccessSequence() {
   const s = ensureSounds();
+  missionActive = false;
   targets.ambience = 0;
   targets.engine = 0;
   targets.critical = 0;
@@ -349,6 +359,7 @@ export function setPaused(isPaused) {
 
 /** Hard stop for End / manual abort. No success/fail sound, no orphaned playback. */
 export function stopAll() {
+  missionActive = false;
   if (failFadeRafId !== null) {
     cancelAnimationFrame(failFadeRafId);
     failFadeRafId = null;
@@ -389,6 +400,7 @@ export function qcDebugAudioStatus() {
     enabled,
     unlocked,
     paused,
+    missionActive,
     lastWakeMeter,
     warning1Played,
     warning2Played,

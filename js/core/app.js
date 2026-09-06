@@ -9,7 +9,7 @@
 
 import { subscribe, getState, setState } from "./state.js";
 import {
-  startSession, pauseSession, resumeSession, endSession, retryMicPermission,
+  startSession, pauseSession, resumeSession, endSession,
   reportFailEventFinished, qcDebugForceFail,
 } from "./session.js";
 import { registerTheme, getTheme, getAllThemes } from "./themeRegistry.js";
@@ -334,6 +334,10 @@ async function beginCalibration() {
   startBtn.disabled = true;
   showCalibrationState("running");
   calibrationCountdownEl.textContent = "5";
+  // Manual Recalibrate previously didn't stop menu music at all — sampling
+  // must not begin until app audio is confirmed, immediately silent (see
+  // the same guarantee in beginMission()'s auto-calibration path).
+  brandAudio.stopAll();
   const result = await runCalibration((secondsRemaining) => {
     calibrationCountdownEl.textContent = String(secondsRemaining);
   });
@@ -800,6 +804,12 @@ async function beginMission() {
     setActiveScreen("countdown");
     countdownStatusEl.hidden = false;
     countdownNumberEl.hidden = true;
+    // stopMenuMusic() above only started a ~700ms fade — sampling must not
+    // begin until app audio is actually, immediately silent (a fade still
+    // in progress can leak into the mic), so cut everything brand-audio
+    // related outright right before recording starts. Normal fade behavior
+    // for every other mission-start path is unaffected.
+    brandAudio.stopAll();
     await runAutoCalibration();
     countdownStatusEl.hidden = true;
     countdownNumberEl.hidden = false;
@@ -854,8 +864,19 @@ startBtn.addEventListener("click", () => {
   beginMission();
 });
 
+// Re-enters the exact same shared mission-start flow Start Mission uses
+// (voiceLevel/durationSeconds are read from the same selectedVoiceLevel/
+// selectedDurationSeconds app.js already holds — never reset by a denied
+// attempt — and the normal auto-calibration/countdown pipeline runs
+// again) rather than a separate, simplified retry path that bypassed all
+// of that and silently fell back to whatever state.voiceLevel last held
+// (never actually the just-selected Voice Level, since that's only
+// committed to state on a SUCCESSFUL start).
 retryBtn.addEventListener("click", () => {
-  retryMicPermission();
+  if (calibrationInProgress) return;
+  missionAudio.unlock(); // must happen synchronously within this user gesture
+  dragonAudio.unlock();
+  beginMission();
 });
 
 pauseBtn.addEventListener("click", () => {
